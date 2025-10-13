@@ -23,6 +23,8 @@ public class MainWindow extends Application {
         Scene scene = new Scene(fxmlLoader.load(), 780, 520);
         stage.setTitle("MagicKeyboard");
         stage.setScene(scene);
+        stage.setMinHeight(400);
+        stage.setMinWidth(600);
         Image icon = new Image(Objects.requireNonNull(MagicKeyboardApplication.class.getResourceAsStream("/image/MagicKeyboard.png")));
         stage.getIcons().add(icon);
         stage.show();

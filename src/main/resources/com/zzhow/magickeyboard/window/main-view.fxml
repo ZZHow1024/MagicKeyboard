@@ -3,23 +3,47 @@
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.TextArea?>
-<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.layout.Priority?>
 
-<AnchorPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="520.0"
-            prefWidth="780.0" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+<BorderPane minWidth="600" minHeight="400" prefWidth="780" prefHeight="520" 
+            xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
             fx:controller="com.zzhow.magickeyboard.controller.MainController">
-    <children>
-        <Label layoutX="308.0" layoutY="14.0" text="MagicKeyboard">
-            <font>
-                <Font size="25.0"/>
-            </font>
-        </Label>
-        <TextArea fx:id="textArea" layoutY="52.0" prefHeight="308.0" prefWidth="780.0"/>
-        <Button fx:id="buttonStart" layoutX="355.0" layoutY="385.0" mnemonicParsing="false"
-                onAction="#onButtonStartClicked" text="开始输入"/>
-        <Label layoutX="369.0" layoutY="489.0" text="ZZHow"/>
-        <Button fx:id="buttonClear" layoutX="368.0" layoutY="426.0" mnemonicParsing="false"
-                onAction="#onButtonClearClicked" text="清空"/>
-    </children>
-</AnchorPane>
+    
+    <!-- 顶部标题 -->
+    <top>
+        <VBox alignment="CENTER" style="-fx-padding: 10;">
+            <Label text="MagicKeyboard">
+                <font>
+                    <Font size="25.0"/>
+                </font>
+            </Label>
+        </VBox>
+    </top>
+    
+    <!-- 中央文本区域 -->
+    <center>
+        <TextArea fx:id="textArea" VBox.vgrow="ALWAYS" HBox.hgrow="ALWAYS" 
+                  style="-fx-margin: 10;"/>
+    </center>
+    
+    <!-- 底部按钮区域 -->
+    <bottom>
+        <VBox spacing="10" style="-fx-alignment: center; -fx-padding: 10;">
+            <HBox spacing="20" style="-fx-alignment: center;">
+                <Button fx:id="buttonStart" mnemonicParsing="false"
+                        onAction="#onButtonStartClicked" text="开始输入" 
+                        prefWidth="100" prefHeight="35"/>
+                <Button fx:id="buttonClear" mnemonicParsing="false"
+                        onAction="#onButtonClearClicked" text="清空"
+                        prefWidth="100" prefHeight="35"/>
+            </HBox>
+            <Label text="ZZHow" style="-fx-text-fill: gray;"/>
+        </VBox>
+    </bottom>
+    
+</BorderPane>
