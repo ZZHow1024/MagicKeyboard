@@ -16,7 +16,8 @@
             </font>
         </Label>
         <TextArea fx:id="textArea" layoutY="52.0" prefHeight="308.0" prefWidth="780.0"/>
-        <Button fx:id="buttonStart" layoutX="355.0" layoutY="385.0" mnemonicParsing="false" text="开始输入"/>
+        <Button fx:id="buttonStart" layoutX="355.0" layoutY="385.0" mnemonicParsing="false"
+                onAction="#onButtonStartClicked" text="开始输入"/>
         <Label layoutX="369.0" layoutY="489.0" text="ZZHow"/>
         <Button fx:id="buttonClear" layoutX="368.0" layoutY="426.0" mnemonicParsing="false"
                 onAction="#onButtonClearClicked" text="清空"/>

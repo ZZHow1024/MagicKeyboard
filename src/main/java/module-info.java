@@ -1,6 +1,8 @@
 module com.zzhow.magickeyboard {
     requires javafx.controls;
     requires javafx.fxml;
+    requires com.sun.jna;
+    requires com.sun.jna.platform;
 
 
     opens com.zzhow.magickeyboard to javafx.fxml;
