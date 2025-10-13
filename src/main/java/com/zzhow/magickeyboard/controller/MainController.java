@@ -1,10 +1,11 @@
 package com.zzhow.magickeyboard.controller;
 
 import com.zzhow.magickeyboard.core.KeyboardInput;
-import javafx.animation.PauseTransition;
+import com.zzhow.magickeyboard.util.OverlayCountdown;
 import javafx.fxml.FXML;
+import javafx.scene.control.Button;
 import javafx.scene.control.TextArea;
-import javafx.util.Duration;
+import javafx.scene.paint.Color;
 
 /**
  * 主窗口控制类
@@ -15,6 +16,8 @@ import javafx.util.Duration;
 public class MainController {
     @FXML
     private TextArea textArea;
+    @FXML
+    private Button buttonStart;
 
     @FXML
     private void initialize() {
@@ -28,10 +31,10 @@ public class MainController {
 
     @FXML
     private void onButtonStartClicked() {
-        PauseTransition delay = new PauseTransition(Duration.seconds(3));
-        delay.setOnFinished(event -> {
+        buttonStart.setDisable(true);
+        OverlayCountdown.show(3, 0.5, Color.BLACK, 80, OverlayCountdown.Corner.TOP_RIGHT, () -> {
             KeyboardInput.sendText(textArea.getText());
+            buttonStart.setDisable(false);
         });
-        delay.play();
     }
 }
