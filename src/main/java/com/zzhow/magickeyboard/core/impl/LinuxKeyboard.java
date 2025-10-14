@@ -13,6 +13,10 @@ import com.zzhow.magickeyboard.core.IKeyboard;
  */
 public class LinuxKeyboard implements IKeyboard {
 
+    private volatile boolean isStopped = false;
+    private volatile boolean isPaused = false;
+    private final Object pauseLock = new Object();
+
     // X11 接口定义
     public interface X11 extends Library {
         X11 INSTANCE = loadX11();
@@ -26,8 +30,11 @@ public class LinuxKeyboard implements IKeyboard {
         }
 
         Pointer XOpenDisplay(String display);
+
         void XCloseDisplay(Pointer display);
+
         void XTestFakeKeyEvent(Pointer display, int keycode, boolean is_press, long delay);
+
         void XFlush(Pointer display);
     }
 
@@ -44,13 +51,20 @@ public class LinuxKeyboard implements IKeyboard {
         }
 
         Pointer XOpenDisplay(String display);
+
         void XCloseDisplay(Pointer display);
+
         void XFlush(Pointer display);
+
         long XKeysymToKeycode(Pointer display, long keysym);
     }
 
     @Override
     public void sendText(String text) {
+        // 重置状态
+        isStopped = false;
+        isPaused = false;
+
         if (X11.INSTANCE == null || Xlib.INSTANCE == null) {
             System.err.println("无法加载 X11 库，请确保系统安装了 X11");
             return;
@@ -64,6 +78,32 @@ public class LinuxKeyboard implements IKeyboard {
 
         try {
             for (int i = 0; i < text.length(); i++) {
+                // 检查是否停止
+                if (isStopped) {
+                    break;
+                }
+
+                // 检查是否暂停
+                while (isPaused) {
+                    synchronized (pauseLock) {
+                        try {
+                            pauseLock.wait();
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                            return;
+                        }
+                    }
+                    // 再次检查是否停止
+                    if (isStopped) {
+                        break;
+                    }
+                }
+
+                // 如果停止则退出循环
+                if (isStopped) {
+                    break;
+                }
+
                 char c = text.charAt(i);
 
                 // 处理代理对（Surrogate Pairs）- 用于支持某些特殊字符和 Emoji
@@ -105,7 +145,7 @@ public class LinuxKeyboard implements IKeyboard {
         long keycode = Xlib.INSTANCE.XKeysymToKeycode(display, keysym);
 
         if (keycode == 0) {
-            System.err.println("无法找到 keycode: " + (char)codePoint);
+            System.err.println("无法找到 keycode: " + (char) codePoint);
             return;
         }
 
@@ -116,7 +156,7 @@ public class LinuxKeyboard implements IKeyboard {
 
     /**
      * 将字符/码点转换为 X11 keysym
-     *
+     * <p>
      * X11 keysym 映射规则：
      * - ASCII (0x20-0x7E): 直接映射
      * - Latin-1 (0xA0-0xFF): 直接映射
@@ -145,7 +185,7 @@ public class LinuxKeyboard implements IKeyboard {
 
     /**
      * 发送特殊按键（如 Enter、Tab 等）
-     *
+     * <p>
      * 常用 keycode：
      * - Enter: 36
      * - Tab: 23
@@ -171,6 +211,30 @@ public class LinuxKeyboard implements IKeyboard {
             X11.INSTANCE.XFlush(display);
         } finally {
             X11.INSTANCE.XCloseDisplay(display);
+        }
+    }
+
+    @Override
+    public void stop() {
+        isStopped = true;
+        isPaused = false;
+        // 唤醒可能处于暂停状态的线程
+        synchronized (pauseLock) {
+            pauseLock.notifyAll();
+        }
+    }
+
+    @Override
+    public void pause() {
+        isPaused = true;
+    }
+
+    @Override
+    public void resume() {
+        isPaused = false;
+        // 唤醒暂停的线程
+        synchronized (pauseLock) {
+            pauseLock.notifyAll();
         }
     }
 }

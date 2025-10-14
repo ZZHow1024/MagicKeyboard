@@ -28,7 +28,31 @@ public class KeyboardInput {
         System.out.println("keyboardImpl = " + keyboardImpl.getClass().getName());
     }
 
+    /**
+     * 根据传入的字符串开始键盘输入
+     */
     public static void sendText(String text) {
         keyboardImpl.sendText(text);
+    }
+    
+    /**
+     * 停止键盘输入
+     */
+    public static void stop() {
+        keyboardImpl.stop();
+    }
+    
+    /**
+     * 暂停键盘输入
+     */
+    public static void pause() {
+        keyboardImpl.pause();
+    }
+    
+    /**
+     * 继续键盘输入
+     */
+    public static void resume() {
+        keyboardImpl.resume();
     }
 }

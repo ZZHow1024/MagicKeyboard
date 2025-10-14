@@ -38,12 +38,21 @@ public class MainController {
         } else if (this.isCountdown && !this.isStartInput) {
             // 正在倒计时，还未开始键入
             OverlayCountdown.stop();
-            this.buttonStart.setText("开始键入");
-            this.buttonClear.setText("清空");
-            this.isCountdown = false;
-            this.isStartInput = false;
-            this.isPaused = false;
+            resetStatus();
+        } else {
+            // 倒计时结束，开始键入
+            KeyboardInput.stop();
+            resetStatus();
         }
+    }
+
+    // 重置状态
+    private void resetStatus() {
+        this.buttonStart.setText("开始键入");
+        this.buttonClear.setText("清空");
+        this.isCountdown = false;
+        this.isStartInput = false;
+        this.isPaused = false;
     }
 
     @FXML
@@ -56,13 +65,7 @@ public class MainController {
             OverlayCountdown.show(3, 0.5, Color.BLACK, 80, OverlayCountdown.Corner.TOP_RIGHT, () -> {
                 this.isStartInput = true;
                 KeyboardInput.sendText(textArea.getText());
-                Platform.runLater(() -> {
-                    this.buttonStart.setText("开始键入");
-                    this.buttonClear.setText("清空");
-                });
-                this.isCountdown = false;
-                this.isStartInput = false;
-                this.isPaused = false;
+                Platform.runLater(this::resetStatus);
             });
         } else if (this.isCountdown && !this.isStartInput) {
             //正在倒计时，还未开始键入
@@ -74,6 +77,19 @@ public class MainController {
             } else {
                 // 未暂停
                 OverlayCountdown.pause();
+                this.buttonStart.setText("继续");
+                this.isPaused = true;
+            }
+        } else {
+            // 倒计时结束，开始键入
+            if (isPaused) {
+                // 已暂停
+                KeyboardInput.resume();
+                this.buttonStart.setText("暂停");
+                this.isPaused = false;
+            } else {
+                // 未暂停
+                KeyboardInput.pause();
                 this.buttonStart.setText("继续");
                 this.isPaused = true;
             }

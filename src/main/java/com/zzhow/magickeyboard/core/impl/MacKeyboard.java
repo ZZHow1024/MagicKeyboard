@@ -12,6 +12,10 @@ import com.zzhow.magickeyboard.core.IKeyboard;
  * @date 2025/10/13
  */
 public class MacKeyboard implements IKeyboard {
+    
+    private volatile boolean isStopped = false;
+    private volatile boolean isPaused = false;
+    private final Object pauseLock = new Object();
 
     public interface CoreGraphics extends Library {
         CoreGraphics INSTANCE = Native.load("CoreGraphics", CoreGraphics.class);
@@ -29,7 +33,37 @@ public class MacKeyboard implements IKeyboard {
 
     @Override
     public void sendText(String text) {
+        // 重置状态
+        isStopped = false;
+        isPaused = false;
+        
         for (char c : text.toCharArray()) {
+            // 检查是否停止
+            if (isStopped) {
+                break;
+            }
+            
+            // 检查是否暂停
+            while (isPaused) {
+                synchronized (pauseLock) {
+                    try {
+                        pauseLock.wait();
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        return;
+                    }
+                }
+                // 再次检查是否停止
+                if (isStopped) {
+                    break;
+                }
+            }
+            
+            // 如果停止则退出循环
+            if (isStopped) {
+                break;
+            }
+            
             sendChar(c);
             try {
                 Thread.sleep(10); // 添加延迟
@@ -56,5 +90,29 @@ public class MacKeyboard implements IKeyboard {
         // 释放资源
         CoreGraphics.INSTANCE.CFRelease(keyDown);
         CoreGraphics.INSTANCE.CFRelease(keyUp);
+    }
+    
+    @Override
+    public void stop() {
+        isStopped = true;
+        isPaused = false;
+        // 唤醒可能处于暂停状态的线程
+        synchronized (pauseLock) {
+            pauseLock.notifyAll();
+        }
+    }
+    
+    @Override
+    public void pause() {
+        isPaused = true;
+    }
+    
+    @Override
+    public void resume() {
+        isPaused = false;
+        // 唤醒暂停的线程
+        synchronized (pauseLock) {
+            pauseLock.notifyAll();
+        }
     }
 }

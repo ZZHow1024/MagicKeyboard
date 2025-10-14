@@ -15,6 +15,10 @@ import java.util.List;
  * @date 2025/10/13
  */
 public class WindowsKeyboard implements IKeyboard {
+    
+    private volatile boolean isStopped = false;
+    private volatile boolean isPaused = false;
+    private final Object pauseLock = new Object();
 
     public interface User32 extends Library {
         User32 INSTANCE = Native.load("user32", User32.class, W32APIOptions.DEFAULT_OPTIONS);
@@ -57,7 +61,37 @@ public class WindowsKeyboard implements IKeyboard {
 
     @Override
     public void sendText(String text) {
+        // 重置状态
+        isStopped = false;
+        isPaused = false;
+        
         for (int i = 0; i < text.length(); i++) {
+            // 检查是否停止
+            if (isStopped) {
+                break;
+            }
+            
+            // 检查是否暂停
+            while (isPaused) {
+                synchronized (pauseLock) {
+                    try {
+                        pauseLock.wait();
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        return;
+                    }
+                }
+                // 再次检查是否停止
+                if (isStopped) {
+                    break;
+                }
+            }
+            
+            // 如果停止则退出循环
+            if (isStopped) {
+                break;
+            }
+
             char c = text.charAt(i);
 
             // 处理代理对（Surrogate Pairs）- 用于支持某些特殊字符和 Emoji
@@ -139,5 +173,29 @@ public class WindowsKeyboard implements IKeyboard {
         input.write();
 
         User32.INSTANCE.SendInput(1, new User32.INPUT[]{input}, input.size());
+    }
+    
+    @Override
+    public void stop() {
+        isStopped = true;
+        isPaused = false;
+        // 唤醒可能处于暂停状态的线程
+        synchronized (pauseLock) {
+            pauseLock.notifyAll();
+        }
+    }
+    
+    @Override
+    public void pause() {
+        isPaused = true;
+    }
+    
+    @Override
+    public void resume() {
+        isPaused = false;
+        // 唤醒暂停的线程
+        synchronized (pauseLock) {
+            pauseLock.notifyAll();
+        }
     }
 }
