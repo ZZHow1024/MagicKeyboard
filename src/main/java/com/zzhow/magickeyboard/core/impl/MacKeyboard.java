@@ -38,7 +38,7 @@ public class MacKeyboard implements IKeyboard {
         isStopped = false;
         isPaused = false;
 
-        for (char c : text.toCharArray()) {
+        for (int i = 0; i < text.length(); i++) {
             // 检查是否停止
             if (isStopped) {
                 break;
@@ -65,6 +65,17 @@ public class MacKeyboard implements IKeyboard {
                 break;
             }
 
+            char c = text.charAt(i);
+
+            // 处理特殊按键
+            if (c == '\n') { // 回车键
+                sendSpecialKey((short)36); // kVK_Return
+                continue;
+            } else if (c == '\t') { // Tab键
+                sendSpecialKey((short)48); // kVK_Tab
+                continue;
+            }
+
             sendChar(c);
             try {
                 Thread.sleep(10); // 添加延迟
@@ -87,6 +98,21 @@ public class MacKeyboard implements IKeyboard {
         // 创建按键释放事件
         Pointer keyUp = CoreGraphics.INSTANCE.CGEventCreateKeyboardEvent(null, (short) 0, false);
         CoreGraphics.INSTANCE.CGEventKeyboardSetUnicodeString(keyUp, 1, chars);
+        CoreGraphics.INSTANCE.CGEventPost(kCGSessionEventTap, keyUp);
+
+        // 释放资源
+        CoreGraphics.INSTANCE.CFRelease(keyDown);
+        CoreGraphics.INSTANCE.CFRelease(keyUp);
+    }
+
+    // 发送特殊按键
+    private void sendSpecialKey(short virtualKey) {
+        // 创建按键按下事件
+        Pointer keyDown = CoreGraphics.INSTANCE.CGEventCreateKeyboardEvent(null, virtualKey, true);
+        CoreGraphics.INSTANCE.CGEventPost(kCGSessionEventTap, keyDown);
+
+        // 创建按键释放事件
+        Pointer keyUp = CoreGraphics.INSTANCE.CGEventCreateKeyboardEvent(null, virtualKey, false);
         CoreGraphics.INSTANCE.CGEventPost(kCGSessionEventTap, keyUp);
 
         // 释放资源

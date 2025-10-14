@@ -107,6 +107,17 @@ public class LinuxKeyboard implements IKeyboard {
 
                 char c = text.charAt(i);
 
+                // 处理特殊按键
+                if (c == '\n') { // 回车键
+                    sendSpecialKey(36); // Enter keycode
+                    i++; // 跳过下一个字符（如果有的话）
+                    continue;
+                } else if (c == '\t') { // Tab键
+                    sendSpecialKey(23); // Tab keycode
+                    i++; // 跳过下一个字符（如果有的话）
+                    continue;
+                }
+
                 // 处理代理对（Surrogate Pairs）- 用于支持某些特殊字符和 Emoji
                 if (Character.isHighSurrogate(c) && i + 1 < text.length()) {
                     char low = text.charAt(i + 1);

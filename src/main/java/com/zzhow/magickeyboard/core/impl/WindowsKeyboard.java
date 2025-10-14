@@ -95,6 +95,15 @@ public class WindowsKeyboard implements IKeyboard {
 
             char c = text.charAt(i);
 
+            // 处理特殊按键
+            if (c == '\n') { // 回车键
+                sendSpecialKey(0x0D); // VK_RETURN
+                continue;
+            } else if (c == '\t') { // Tab键
+                sendSpecialKey(0x09); // VK_TAB
+                continue;
+            }
+
             // 处理代理对（Surrogate Pairs）- 用于支持某些特殊字符和 Emoji
             if (Character.isHighSurrogate(c) && i + 1 < text.length()) {
                 char low = text.charAt(i + 1);
