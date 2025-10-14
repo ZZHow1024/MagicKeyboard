@@ -2,6 +2,7 @@ package com.zzhow.magickeyboard.controller;
 
 import com.zzhow.magickeyboard.core.ControlCenter;
 import com.zzhow.magickeyboard.core.KeyboardInput;
+import com.zzhow.magickeyboard.factory.LongSpinnerValueFactory;
 import com.zzhow.magickeyboard.util.OverlayCountdown;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
@@ -23,6 +24,8 @@ public class MainController {
     @FXML
     private Button buttonClear;
     @FXML
+    private Spinner<Long> spinner;
+    @FXML
     private ChoiceBox<String> choiceBoxPosition;
 
     @FXML
@@ -31,6 +34,23 @@ public class MainController {
         ControlCenter.onPaused = () -> Platform.runLater(this::pause);
         ControlCenter.onResume = () -> Platform.runLater(this::resume);
         ControlCenter.onResetStatus = () -> Platform.runLater(this::resetStatus);
+        spinner.setValueFactory(new LongSpinnerValueFactory(0L, Long.MAX_VALUE, 10L, 1L));
+        // 限制只能输入整数
+        spinner.getEditor().textProperty().addListener((obs, oldValue, newValue) -> {
+            if (!newValue.matches("-?\\d*")) {
+                spinner.getEditor().setText(oldValue);
+            } else {
+                try {
+                    if (!newValue.isEmpty() && !newValue.equals("-")) {
+                        long value = Long.parseLong(newValue);
+                        spinner.getValueFactory().setValue(value);
+                        ControlCenter.timeInterval = value;
+                    }
+                } catch (NumberFormatException e) {
+                    spinner.getEditor().setText(oldValue);
+                }
+            }
+        });
         choiceBoxPosition.getItems().addAll("悬浮窗右上", "悬浮窗左上", "悬浮窗右下", "悬浮窗左下");
         choiceBoxPosition.setValue("悬浮窗右上");
     }

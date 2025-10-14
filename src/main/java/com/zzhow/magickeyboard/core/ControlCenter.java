@@ -11,10 +11,12 @@ import javafx.scene.paint.Color;
  * update 2025/10/14
  */
 public class ControlCenter {
-    public static OverlayCountdown.Corner floatingWindowPosition = OverlayCountdown.Corner.BOTTOM_RIGHT;
+    public static OverlayCountdown.Corner floatingWindowPosition = OverlayCountdown.Corner.BOTTOM_RIGHT; // 悬浮窗位置
+    public static long timeInterval = 10L; // 键入间隔时间(ms)
     public static boolean isCountdown = false; // 是否开始倒计时
     public static boolean isStartInput = false; // 是否开始键入
     public static boolean isPaused = false; // 是否暂停
+
     public static Runnable onPaused;
     public static Runnable onResume;
     public static Runnable onResetStatus;

@@ -3,6 +3,7 @@ package com.zzhow.magickeyboard.core.impl;
 import com.sun.jna.Library;
 import com.sun.jna.Native;
 import com.sun.jna.Pointer;
+import com.zzhow.magickeyboard.core.ControlCenter;
 import com.zzhow.magickeyboard.core.IKeyboard;
 
 /**
@@ -132,7 +133,7 @@ public class LinuxKeyboard implements IKeyboard {
                 sendChar(display, c);
 
                 try {
-                    Thread.sleep(10); // 添加延迟
+                    Thread.sleep(ControlCenter.timeInterval); // 添加延迟
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     break;

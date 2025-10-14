@@ -3,6 +3,7 @@ package com.zzhow.magickeyboard.core.impl;
 import com.sun.jna.*;
 import com.sun.jna.platform.win32.WinDef;
 import com.sun.jna.win32.W32APIOptions;
+import com.zzhow.magickeyboard.core.ControlCenter;
 import com.zzhow.magickeyboard.core.IKeyboard;
 
 import java.util.Arrays;
@@ -119,7 +120,7 @@ public class WindowsKeyboard implements IKeyboard {
 
             sendUnicodeChar(c);
             try {
-                Thread.sleep(10); // 添加延迟
+                Thread.sleep(ControlCenter.timeInterval); // 添加延迟
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 break;
