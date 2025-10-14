@@ -9,7 +9,8 @@ import com.zzhow.magickeyboard.core.IKeyboard;
  * 模拟键盘输入-Linux 实现类
  *
  * @author ZZHow
- * @date 2025/10/13
+ * create 2025/10/13
+ * update 2025/10/14
  */
 public class LinuxKeyboard implements IKeyboard {
 
@@ -126,6 +127,7 @@ public class LinuxKeyboard implements IKeyboard {
                     break;
                 }
             }
+            isStopped = true;
         } finally {
             Xlib.INSTANCE.XFlush(display);
             Xlib.INSTANCE.XCloseDisplay(display);
@@ -235,6 +237,19 @@ public class LinuxKeyboard implements IKeyboard {
         // 唤醒暂停的线程
         synchronized (pauseLock) {
             pauseLock.notifyAll();
+        }
+
+        // 等待键盘键入完毕
+        while (!isStopped) {
+            synchronized (pauseLock) {
+                try {
+                    // 等待直到键盘输入完成或停止
+                    pauseLock.wait(300);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
         }
     }
 }

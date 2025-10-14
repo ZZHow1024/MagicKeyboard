@@ -27,6 +27,8 @@ public class MainController {
     @FXML
     private void initialize() {
         KeyboardInput.sendText("");
+        ControlCenter.onPaused = () -> Platform.runLater(this::pause);
+        ControlCenter.onResume = () -> Platform.runLater(this::resume);
     }
 
     @FXML
@@ -39,15 +41,6 @@ public class MainController {
             ControlCenter.stop();
             resetStatus();
         }
-    }
-
-    // 重置状态
-    private void resetStatus() {
-        this.buttonStart.setText("开始键入");
-        this.buttonClear.setText("清空");
-        ControlCenter.isCountdown = false;
-        ControlCenter.isStartInput = false;
-        ControlCenter.isPaused = false;
     }
 
     @FXML
@@ -67,12 +60,30 @@ public class MainController {
             if (ControlCenter.isPaused) {
                 // 已暂停
                 ControlCenter.resumeOrPause();
-                this.buttonStart.setText("暂停");
             } else {
                 // 未暂停
                 ControlCenter.resumeOrPause();
-                this.buttonStart.setText("继续");
             }
         }
+    }
+
+    // 重置状态
+    private void resetStatus() {
+        this.buttonStart.setText("开始键入");
+        this.buttonClear.setText("清空");
+        ControlCenter.isCountdown = false;
+        ControlCenter.isStartInput = false;
+        ControlCenter.isPaused = false;
+    }
+
+    // 暂停
+    private void pause() {
+        this.buttonStart.setText("继续");
+        this.buttonClear.setText("停止");
+    }
+
+    // 继续
+    private void resume() {
+        this.buttonStart.setText("暂停");
     }
 }

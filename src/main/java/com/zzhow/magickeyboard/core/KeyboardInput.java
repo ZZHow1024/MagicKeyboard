@@ -8,7 +8,8 @@ import com.zzhow.magickeyboard.core.impl.WindowsKeyboard;
  * 模拟键盘输入核心入口类
  *
  * @author ZZHow
- * @date 2025/10/13
+ * create 2025/10/13
+ * update 2025/10/14
  */
 
 public class KeyboardInput {
@@ -34,23 +35,23 @@ public class KeyboardInput {
     public static void sendText(String text) {
         keyboardImpl.sendText(text);
     }
-    
+
     /**
      * 停止键盘输入
      */
     public static void stop() {
         keyboardImpl.stop();
     }
-    
+
     /**
      * 暂停键盘输入
      */
     public static void pause() {
         keyboardImpl.pause();
     }
-    
+
     /**
-     * 继续键盘输入
+     * 阻塞式继续键盘输入，等待键盘键入完毕后才执行结束
      */
     public static void resume() {
         keyboardImpl.resume();

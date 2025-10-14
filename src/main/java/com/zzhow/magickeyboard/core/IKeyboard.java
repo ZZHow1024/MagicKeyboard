@@ -4,7 +4,8 @@ package com.zzhow.magickeyboard.core;
  * 模拟键盘输入接口
  *
  * @author ZZHow
- * @date 2025/10/13
+ * create 2025/10/13
+ * update 2025/10/14
  */
 public interface IKeyboard {
     /**
@@ -25,7 +26,7 @@ public interface IKeyboard {
     void pause();
 
     /**
-     * 继续键盘输入
+     * 阻塞式继续键盘输入，等待键盘键入完毕后才执行结束
      */
     void resume();
 }

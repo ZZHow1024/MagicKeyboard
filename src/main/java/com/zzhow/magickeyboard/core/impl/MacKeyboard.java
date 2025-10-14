@@ -9,10 +9,11 @@ import com.zzhow.magickeyboard.core.IKeyboard;
  * 模拟键盘输入-macOS 实现类
  *
  * @author ZZHow
- * @date 2025/10/13
+ * create 2025/10/13
+ * update 2025/10/14
  */
 public class MacKeyboard implements IKeyboard {
-    
+
     private volatile boolean isStopped = false;
     private volatile boolean isPaused = false;
     private final Object pauseLock = new Object();
@@ -36,13 +37,13 @@ public class MacKeyboard implements IKeyboard {
         // 重置状态
         isStopped = false;
         isPaused = false;
-        
+
         for (char c : text.toCharArray()) {
             // 检查是否停止
             if (isStopped) {
                 break;
             }
-            
+
             // 检查是否暂停
             while (isPaused) {
                 synchronized (pauseLock) {
@@ -58,12 +59,12 @@ public class MacKeyboard implements IKeyboard {
                     break;
                 }
             }
-            
+
             // 如果停止则退出循环
             if (isStopped) {
                 break;
             }
-            
+
             sendChar(c);
             try {
                 Thread.sleep(10); // 添加延迟
@@ -72,6 +73,7 @@ public class MacKeyboard implements IKeyboard {
                 break;
             }
         }
+        isStopped = true;
     }
 
     // 使用 Unicode 字符串
@@ -91,7 +93,7 @@ public class MacKeyboard implements IKeyboard {
         CoreGraphics.INSTANCE.CFRelease(keyDown);
         CoreGraphics.INSTANCE.CFRelease(keyUp);
     }
-    
+
     @Override
     public void stop() {
         isStopped = true;
@@ -101,18 +103,31 @@ public class MacKeyboard implements IKeyboard {
             pauseLock.notifyAll();
         }
     }
-    
+
     @Override
     public void pause() {
         isPaused = true;
     }
-    
+
     @Override
     public void resume() {
         isPaused = false;
         // 唤醒暂停的线程
         synchronized (pauseLock) {
             pauseLock.notifyAll();
+        }
+
+        // 等待键盘键入完毕
+        while (!isStopped) {
+            synchronized (pauseLock) {
+                try {
+                    // 等待直到键盘输入完成或停止
+                    pauseLock.wait(300);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
         }
     }
 }

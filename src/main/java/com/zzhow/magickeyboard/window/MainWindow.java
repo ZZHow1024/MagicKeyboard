@@ -14,7 +14,8 @@ import java.util.Objects;
  * 主窗口类
  *
  * @author ZZHow
- * @date 2025/10/12
+ * create 2025/10/12
+ * update 2025/10/12
  */
 public class MainWindow extends Application {
     @Override

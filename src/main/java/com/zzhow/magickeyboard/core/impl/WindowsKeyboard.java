@@ -12,10 +12,11 @@ import java.util.List;
  * 模拟键盘输入-Windows 实现类
  *
  * @author ZZHow
- * @date 2025/10/13
+ * create 2025/10/13
+ * update 2025/10/14
  */
 public class WindowsKeyboard implements IKeyboard {
-    
+
     private volatile boolean isStopped = false;
     private volatile boolean isPaused = false;
     private final Object pauseLock = new Object();
@@ -64,13 +65,13 @@ public class WindowsKeyboard implements IKeyboard {
         // 重置状态
         isStopped = false;
         isPaused = false;
-        
+
         for (int i = 0; i < text.length(); i++) {
             // 检查是否停止
             if (isStopped) {
                 break;
             }
-            
+
             // 检查是否暂停
             while (isPaused) {
                 synchronized (pauseLock) {
@@ -86,7 +87,7 @@ public class WindowsKeyboard implements IKeyboard {
                     break;
                 }
             }
-            
+
             // 如果停止则退出循环
             if (isStopped) {
                 break;
@@ -115,6 +116,7 @@ public class WindowsKeyboard implements IKeyboard {
                 break;
             }
         }
+        isStopped = true;
     }
 
     private void sendUnicodeChar(char c) {
@@ -174,7 +176,7 @@ public class WindowsKeyboard implements IKeyboard {
 
         User32.INSTANCE.SendInput(1, new User32.INPUT[]{input}, input.size());
     }
-    
+
     @Override
     public void stop() {
         isStopped = true;
@@ -184,18 +186,31 @@ public class WindowsKeyboard implements IKeyboard {
             pauseLock.notifyAll();
         }
     }
-    
+
     @Override
     public void pause() {
         isPaused = true;
     }
-    
+
     @Override
     public void resume() {
         isPaused = false;
         // 唤醒暂停的线程
         synchronized (pauseLock) {
             pauseLock.notifyAll();
+        }
+
+        // 等待键盘键入完毕
+        while (!isStopped) {
+            synchronized (pauseLock) {
+                try {
+                    // 等待直到键盘输入完成或停止
+                    pauseLock.wait(300);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
         }
     }
 }
