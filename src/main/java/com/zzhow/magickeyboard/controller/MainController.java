@@ -5,8 +5,7 @@ import com.zzhow.magickeyboard.core.KeyboardInput;
 import com.zzhow.magickeyboard.util.OverlayCountdown;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
-import javafx.scene.control.Button;
-import javafx.scene.control.TextArea;
+import javafx.scene.control.*;
 import javafx.scene.paint.Color;
 
 /**
@@ -23,12 +22,17 @@ public class MainController {
     private Button buttonStart;
     @FXML
     private Button buttonClear;
+    @FXML
+    private ChoiceBox<String> choiceBoxPosition;
 
     @FXML
     private void initialize() {
         KeyboardInput.sendText("");
         ControlCenter.onPaused = () -> Platform.runLater(this::pause);
         ControlCenter.onResume = () -> Platform.runLater(this::resume);
+        ControlCenter.onResetStatus = () -> Platform.runLater(this::resetStatus);
+        choiceBoxPosition.getItems().addAll("悬浮窗右上", "悬浮窗左上", "悬浮窗右下", "悬浮窗左下");
+        choiceBoxPosition.setValue("悬浮窗右上");
     }
 
     @FXML
@@ -50,7 +54,7 @@ public class MainController {
             ControlCenter.isCountdown = true;
             this.buttonStart.setText("暂停");
             this.buttonClear.setText("停止");
-            OverlayCountdown.show(3, 0.5, Color.BLACK, 80, OverlayCountdown.Corner.TOP_RIGHT, () -> {
+            OverlayCountdown.show(3, 0.5, Color.BLACK, 80, ControlCenter.floatingWindowPosition, () -> {
                 ControlCenter.isStartInput = true;
                 KeyboardInput.sendText(textArea.getText());
                 Platform.runLater(this::resetStatus);
@@ -65,6 +69,17 @@ public class MainController {
                 ControlCenter.resumeOrPause();
             }
         }
+    }
+
+    @FXML
+    private void switchPosition() {
+        ControlCenter.floatingWindowPosition = switch (choiceBoxPosition.getValue()) {
+            case "悬浮窗右上" -> OverlayCountdown.Corner.TOP_RIGHT;
+            case "悬浮窗左上" -> OverlayCountdown.Corner.TOP_LEFT;
+            case "悬浮窗右下" -> OverlayCountdown.Corner.BOTTOM_RIGHT;
+            case "悬浮窗左下" -> OverlayCountdown.Corner.BOTTOM_LEFT;
+            default -> OverlayCountdown.Corner.TOP_RIGHT;
+        };
     }
 
     // 重置状态

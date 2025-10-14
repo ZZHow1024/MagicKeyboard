@@ -11,16 +11,19 @@ import javafx.scene.paint.Color;
  * update 2025/10/14
  */
 public class ControlCenter {
+    public static OverlayCountdown.Corner floatingWindowPosition = OverlayCountdown.Corner.BOTTOM_RIGHT;
     public static boolean isCountdown = false; // 是否开始倒计时
     public static boolean isStartInput = false; // 是否开始键入
     public static boolean isPaused = false; // 是否暂停
     public static Runnable onPaused;
     public static Runnable onResume;
+    public static Runnable onResetStatus;
 
     public static void stop() {
         if (ControlCenter.isCountdown && !ControlCenter.isStartInput) {
             // 正在倒计时，还未开始键入
             OverlayCountdown.stop();
+            ControlCenter.onResetStatus.run();
         } else if (ControlCenter.isCountdown) {
             // 倒计时结束，开始键入
             KeyboardInput.stop();
@@ -44,7 +47,7 @@ public class ControlCenter {
             if (isPaused) {
                 // 已暂停
                 OverlayCountdown.stop();
-                OverlayCountdown.show(3, 0.5, Color.BLACK, 80, OverlayCountdown.Corner.TOP_RIGHT, KeyboardInput::resume);
+                OverlayCountdown.show(3, 0.5, Color.BLACK, 80, ControlCenter.floatingWindowPosition, KeyboardInput::resume);
                 ControlCenter.isPaused = false;
                 onResume.run();
             } else {
