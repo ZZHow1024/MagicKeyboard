@@ -22,6 +22,13 @@ import javafx.scene.layout.VBox;
  */
 public class OverlayCountdown {
 
+    private static Timeline currentTimeline;
+    private static Stage currentStage;
+    private static volatile boolean isPaused = false;
+    private static volatile boolean isStopped = false;
+    private static double remainingSeconds = 0;
+    private static FadeTransition currentFadeOut;
+
     public enum Corner {
         TOP_LEFT, TOP_RIGHT, BOTTOM_LEFT, BOTTOM_RIGHT
     }
@@ -40,6 +47,11 @@ public class OverlayCountdown {
                             int fontSize, Corner corner, Runnable onFinish) {
 
         Platform.runLater(() -> {
+            // 重置状态
+            isStopped = false;
+            isPaused = false;
+            remainingSeconds = seconds;
+
             Stage overlayStage = new Stage();
             overlayStage.initStyle(StageStyle.TRANSPARENT);
             overlayStage.setAlwaysOnTop(true);
@@ -124,6 +136,9 @@ public class OverlayCountdown {
 
             overlayStage.show();
 
+            // 保存当前实例引用
+            currentStage = overlayStage;
+
             // 倒计时逻辑
             Timeline timeline = new Timeline();
             for (int i = 0; i <= seconds; i++) {
@@ -131,7 +146,22 @@ public class OverlayCountdown {
                 timeline.getKeyFrames().add(new KeyFrame(
                         Duration.seconds(i),
                         e -> {
+                            // 检查是否停止
+                            if (isStopped) {
+                                timeline.stop();
+                                overlayStage.close();
+                                return;
+                            }
+
+                            // 检查是否暂停
+                            if (isPaused) {
+                                timeline.pause();
+                                return;
+                            }
+
                             countdownLabel.setText(remaining > 0 ? String.valueOf(remaining) : "");
+                            remainingSeconds = remaining;
+
                             // 倒计时结束时立即触发回调
                             if (remaining == 0 && onFinish != null) {
                                 new Thread(onFinish).start();
@@ -144,10 +174,99 @@ public class OverlayCountdown {
             FadeTransition fadeOut = new FadeTransition(Duration.seconds(0.8), root);
             fadeOut.setFromValue(1.0);
             fadeOut.setToValue(0.0);
-            fadeOut.setOnFinished(e -> overlayStage.close());
+            fadeOut.setOnFinished(e -> {
+                overlayStage.close();
+                currentStage = null;
+                currentTimeline = null;
+                currentFadeOut = null;
+            });
 
-            timeline.setOnFinished(e -> fadeOut.play());
+            timeline.setOnFinished(e -> {
+                if (!isStopped) {
+                    fadeOut.play();
+                }
+            });
+
+            currentTimeline = timeline;
+            currentFadeOut = fadeOut;
             timeline.play();
         });
+    }
+
+    /**
+     * 停止倒计时
+     */
+    public static void stop() {
+        isStopped = true;
+        isPaused = false;
+
+        Platform.runLater(() -> {
+            if (currentTimeline != null) {
+                currentTimeline.stop();
+            }
+            if (currentFadeOut != null) {
+                currentFadeOut.stop();
+            }
+            if (currentStage != null) {
+                currentStage.close();
+                currentStage = null;
+                currentTimeline = null;
+                currentFadeOut = null;
+            }
+        });
+    }
+
+    /**
+     * 暂停倒计时
+     */
+    public static void pause() {
+        isPaused = true;
+
+        Platform.runLater(() -> {
+            if (currentTimeline != null && currentTimeline.getStatus() == Animation.Status.RUNNING) {
+                currentTimeline.pause();
+            }
+        });
+    }
+
+    /**
+     * 继续倒计时
+     */
+    public static void resume() {
+        isPaused = false;
+
+        Platform.runLater(() -> {
+            if (currentTimeline != null && currentTimeline.getStatus() == Animation.Status.PAUSED) {
+                currentTimeline.play();
+            }
+        });
+    }
+
+    /**
+     * 获取剩余秒数
+     */
+    public static double getRemainingSeconds() {
+        return remainingSeconds;
+    }
+
+    /**
+     * 检查倒计时是否正在运行
+     */
+    public static boolean isRunning() {
+        return currentTimeline != null && currentTimeline.getStatus() == Animation.Status.RUNNING;
+    }
+
+    /**
+     * 检查倒计时是否已暂停
+     */
+    public static boolean isPaused() {
+        return isPaused;
+    }
+
+    /**
+     * 检查倒计时是否已停止
+     */
+    public static boolean isStopped() {
+        return isStopped;
     }
 }
