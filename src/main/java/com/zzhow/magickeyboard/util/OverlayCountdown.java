@@ -21,7 +21,6 @@ import javafx.scene.layout.VBox;
  * @date 2025/10/13
  */
 public class OverlayCountdown {
-
     private static Timeline currentTimeline;
     private static Stage currentStage;
     private static volatile boolean isPaused = false;
@@ -139,6 +138,17 @@ public class OverlayCountdown {
             // 保存当前实例引用
             currentStage = overlayStage;
 
+            // 淡出动画（提前定义，供回调函数使用）
+            FadeTransition fadeOut = new FadeTransition(Duration.seconds(0.8), root);
+            fadeOut.setFromValue(1.0);
+            fadeOut.setToValue(0.0);
+            fadeOut.setOnFinished(e -> {
+                overlayStage.close();
+                currentStage = null;
+                currentTimeline = null;
+                currentFadeOut = null;
+            });
+
             // 倒计时逻辑
             Timeline timeline = new Timeline();
             for (int i = 0; i <= seconds; i++) {
@@ -159,33 +169,43 @@ public class OverlayCountdown {
                                 return;
                             }
 
-                            countdownLabel.setText(remaining > 0 ? String.valueOf(remaining) : "");
+                            if (remaining == 0) {
+                                // 倒计时结束时显示"正在键入"并调整字体大小
+                                countdownLabel.setStyle("-fx-font-size: 50px;");
+                                // 透明度渐变
+                                Timeline fade = new Timeline(
+                                        new KeyFrame(Duration.seconds(0), new KeyValue(countdownLabel.opacityProperty(), 1.0, Interpolator.EASE_BOTH)),
+                                        new KeyFrame(Duration.seconds(0.5), new KeyValue(countdownLabel.opacityProperty(), 0.0, Interpolator.EASE_BOTH))
+                                );
+                                fade.setCycleCount(Timeline.INDEFINITE);
+                                fade.setAutoReverse(true);
+                                fade.play();
+                                countdownLabel.setText("正在键入");
+                            } else {
+                                countdownLabel.setText(String.valueOf(remaining));
+                            }
                             remainingSeconds = remaining;
 
-                            // 倒计时结束时立即触发回调
+                            // 倒计时结束时执行回调
                             if (remaining == 0 && onFinish != null) {
-                                new Thread(onFinish).start();
+                                // 在新线程中执行回调
+                                new Thread(() -> {
+                                    try {
+                                        onFinish.run();
+                                    } finally {
+                                        // 回调完成后在JavaFX线程中执行淡出动画
+                                        Platform.runLater(() -> {
+                                            if (!isStopped) {
+                                                currentFadeOut = fadeOut;
+                                                fadeOut.play();
+                                            }
+                                        });
+                                    }
+                                }).start();
                             }
                         }
                 ));
             }
-
-            // 淡出动画
-            FadeTransition fadeOut = new FadeTransition(Duration.seconds(0.8), root);
-            fadeOut.setFromValue(1.0);
-            fadeOut.setToValue(0.0);
-            fadeOut.setOnFinished(e -> {
-                overlayStage.close();
-                currentStage = null;
-                currentTimeline = null;
-                currentFadeOut = null;
-            });
-
-            timeline.setOnFinished(e -> {
-                if (!isStopped) {
-                    fadeOut.play();
-                }
-            });
 
             currentTimeline = timeline;
             currentFadeOut = fadeOut;
