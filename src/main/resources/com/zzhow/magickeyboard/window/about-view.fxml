@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<VBox alignment="CENTER" prefHeight="400.0" prefWidth="600.0" spacing="20.0" xmlns="http://javafx.com/javafx/21"
+      xmlns:fx="http://javafx.com/fxml/1">
+    <padding>
+        <Insets bottom="20.0" left="20.0" right="20.0" top="20.0"/>
+    </padding>
+    <AnchorPane prefHeight="287.0" prefWidth="471.0">
+        <children>
+            <Label fx:id="Label1" alignment="CENTER" layoutX="60.0" layoutY="14.0" prefHeight="75.0" prefWidth="436.0"
+                   text="神奇键盘 1.0.0&#10;MagicKeyboard 1.0.0" textAlignment="CENTER">
+                <font>
+                    <Font size="28.0"/>
+                </font>
+            </Label>
+            <Label fx:id="Label2" layoutX="14.0" layoutY="100.0" prefHeight="23.0" prefWidth="90.0" text="新特性：">
+                <font>
+                    <Font size="18.0"/>
+                </font>
+            </Label>
+            <Label fx:id="Label3" alignment="CENTER" layoutY="123.0" prefHeight="165.0" prefWidth="555.0"
+                   text="1. 模拟键盘键入。&#10;2. 键入间隔时间调节。&#10;3. 悬浮窗提示。&#10;&#9;- 支持悬浮窗控制键入状态&#10;&#9;- 支持调节悬浮窗位置">
+                <font>
+                    <Font size="18.0"/>
+                </font>
+            </Label>
+        </children>
+    </AnchorPane>
+    <Label layoutX="183.0" layoutY="287.0" text="ZZHow.com">
+        <font>
+            <Font size="20.0"/>
+        </font>
+    </Label>
+</VBox>

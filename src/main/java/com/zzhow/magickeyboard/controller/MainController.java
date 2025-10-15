@@ -104,6 +104,11 @@ public class MainController {
     }
 
     @FXML
+    private void onButtonAboutClicked() {
+        AboutWindow.open();
+    }
+
+    @FXML
     private void onButtonExitClicked() {
         System.exit(0);
     }

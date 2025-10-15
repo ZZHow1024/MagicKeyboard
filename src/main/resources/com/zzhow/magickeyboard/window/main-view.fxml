@@ -50,6 +50,7 @@
             <AnchorPane prefHeight="2.0" prefWidth="760.0">
                 <children>
                     <Label layoutX="359.0" layoutY="1.0" style="-fx-text-fill: gray;" text="ZZHow"/>
+                    <Button layoutY="-3.0" mnemonicParsing="false" onAction="#onButtonAboutClicked" text="关于"/>
                     <Button layoutX="717.0" layoutY="-3.0" mnemonicParsing="false" onAction="#onButtonExitClicked"
                             text="退出"/>
                 </children>
