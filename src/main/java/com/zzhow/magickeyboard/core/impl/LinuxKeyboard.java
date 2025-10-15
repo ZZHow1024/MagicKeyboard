@@ -11,7 +11,7 @@ import com.zzhow.magickeyboard.core.IKeyboard;
  *
  * @author ZZHow
  * create 2025/10/13
- * update 2025/10/14
+ * update 2025/10/15
  */
 public class LinuxKeyboard implements IKeyboard {
 
@@ -32,11 +32,8 @@ public class LinuxKeyboard implements IKeyboard {
         }
 
         Pointer XOpenDisplay(String display);
-
         void XCloseDisplay(Pointer display);
-
         void XTestFakeKeyEvent(Pointer display, int keycode, boolean is_press, long delay);
-
         void XFlush(Pointer display);
     }
 
@@ -53,11 +50,8 @@ public class LinuxKeyboard implements IKeyboard {
         }
 
         Pointer XOpenDisplay(String display);
-
         void XCloseDisplay(Pointer display);
-
         void XFlush(Pointer display);
-
         long XKeysymToKeycode(Pointer display, long keysym);
     }
 
@@ -68,7 +62,7 @@ public class LinuxKeyboard implements IKeyboard {
         isPaused = false;
 
         if (X11.INSTANCE == null || Xlib.INSTANCE == null) {
-            System.err.println("无法加载 X11 库，请确保系统安装了 X11");
+            System.err.println("无法加载 X11 库,请确保系统安装了 X11");
             return;
         }
 
@@ -86,22 +80,7 @@ public class LinuxKeyboard implements IKeyboard {
                 }
 
                 // 检查是否暂停
-                while (isPaused) {
-                    synchronized (pauseLock) {
-                        try {
-                            pauseLock.wait();
-                        } catch (InterruptedException e) {
-                            Thread.currentThread().interrupt();
-                            return;
-                        }
-                    }
-                    // 再次检查是否停止
-                    if (isStopped) {
-                        break;
-                    }
-                }
-
-                // 如果停止则退出循环
+                checkPause();
                 if (isStopped) {
                     break;
                 }
@@ -110,12 +89,12 @@ public class LinuxKeyboard implements IKeyboard {
 
                 // 处理特殊按键
                 if (c == '\n') { // 回车键
-                    sendSpecialKey(36); // Enter keycode
-                    i++; // 跳过下一个字符（如果有的话）
+                    sendSpecialKeyWithDisplay(display, 36); // Enter keycode
+                    sleep();
                     continue;
                 } else if (c == '\t') { // Tab键
-                    sendSpecialKey(23); // Tab keycode
-                    i++; // 跳过下一个字符（如果有的话）
+                    sendSpecialKeyWithDisplay(display, 23); // Tab keycode
+                    sleep();
                     continue;
                 }
 
@@ -124,19 +103,18 @@ public class LinuxKeyboard implements IKeyboard {
                     char low = text.charAt(i + 1);
                     if (Character.isLowSurrogate(low)) {
                         int codePoint = Character.toCodePoint(c, low);
-                        sendChar(display, codePoint);
-                        i++; // 跳过下一个字符
+                        // 尝试发送,如果无法发送则跳过
+                        if (sendChar(display, codePoint)) {
+                            sleep();
+                        }
+                        i++; // 跳过低位代理
                         continue;
                     }
                 }
 
-                sendChar(display, c);
-
-                try {
-                    Thread.sleep(ControlCenter.timeInterval); // 添加延迟
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    break;
+                // 发送普通字符,如果无法发送则跳过
+                if (sendChar(display, c)) {
+                    sleep();
                 }
             }
             isStopped = true;
@@ -146,32 +124,95 @@ public class LinuxKeyboard implements IKeyboard {
         }
     }
 
-    private void sendChar(Pointer display, int codePoint) {
+    /**
+     * 检查暂停状态
+     */
+    private void checkPause() {
+        while (isPaused) {
+            synchronized (pauseLock) {
+                try {
+                    pauseLock.wait();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    return;
+                }
+            }
+            if (isStopped) {
+                break;
+            }
+        }
+    }
+
+    /**
+     * 延迟
+     */
+    private void sleep() {
+        try {
+            Thread.sleep(ControlCenter.timeInterval);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    /**
+     * 发送字符,返回是否成功
+     */
+    private boolean sendChar(Pointer display, int codePoint) {
+        // 检查是否需要 Shift 键
+        boolean needsShift = needsShiftKey((char) codePoint);
+
         // 将字符/码点转换为 X11 keysym
         long keysym = charToKeysym(codePoint);
 
         if (keysym == 0) {
-            System.err.println("无法映射字符: U+" + Integer.toHexString(codePoint).toUpperCase());
-            return;
+            // 静默跳过无法映射的字符(如中文)
+            return false;
         }
 
         // 将 keysym 转换为 keycode
         long keycode = Xlib.INSTANCE.XKeysymToKeycode(display, keysym);
 
         if (keycode == 0) {
-            System.err.println("无法找到 keycode: " + (char) codePoint);
-            return;
+            // 静默跳过无法找到keycode的字符
+            return false;
+        }
+
+        // 如果需要 Shift，先按下 Shift 键
+        if (needsShift) {
+            X11.INSTANCE.XTestFakeKeyEvent(display, 50, true, 0); // Left Shift keycode = 50
         }
 
         // 发送按键按下和释放事件
         X11.INSTANCE.XTestFakeKeyEvent(display, (int) keycode, true, 0);
         X11.INSTANCE.XTestFakeKeyEvent(display, (int) keycode, false, 0);
+
+        // 如果按下了 Shift，释放 Shift 键
+        if (needsShift) {
+            X11.INSTANCE.XTestFakeKeyEvent(display, 50, false, 0); // Release Shift
+        }
+
+        X11.INSTANCE.XFlush(display);
+        return true;
+    }
+
+    /**
+     * 判断字符是否需要按 Shift 键
+     */
+    private boolean needsShiftKey(char c) {
+        // 大写字母需要 Shift
+        if (c >= 'A' && c <= 'Z') {
+            return true;
+        }
+
+        // 需要 Shift 的符号（美式键盘布局）
+        String shiftSymbols = "!@#$%^&*()_+{}|:\"<>?~";
+        return shiftSymbols.indexOf(c) != -1;
     }
 
     /**
      * 将字符/码点转换为 X11 keysym
      * <p>
-     * X11 keysym 映射规则：
+     * X11 keysym 映射规则:
      * - ASCII (0x20-0x7E): 直接映射
      * - Latin-1 (0xA0-0xFF): 直接映射
      * - Unicode (0x100-0x10FFFF): 0x01000000 + 码点
@@ -193,39 +234,17 @@ public class LinuxKeyboard implements IKeyboard {
             return 0x01000000L + codePoint;
         }
 
-        // 无法映射的字符
+        // 无法映射的字符,返回0表示跳过
         return 0;
     }
 
     /**
-     * 发送特殊按键（如 Enter、Tab 等）
-     * <p>
-     * 常用 keycode：
-     * - Enter: 36
-     * - Tab: 23
-     * - Escape: 9
-     * - Backspace: 22
-     * - Space: 65
+     * 使用已有display发送特殊按键(内部方法)
      */
-    public void sendSpecialKey(int keycode) {
-        if (X11.INSTANCE == null) {
-            System.err.println("X11 库未加载");
-            return;
-        }
-
-        Pointer display = X11.INSTANCE.XOpenDisplay(null);
-        if (display == null) {
-            System.err.println("无法打开 X11 显示");
-            return;
-        }
-
-        try {
-            X11.INSTANCE.XTestFakeKeyEvent(display, keycode, true, 0);
-            X11.INSTANCE.XTestFakeKeyEvent(display, keycode, false, 0);
-            X11.INSTANCE.XFlush(display);
-        } finally {
-            X11.INSTANCE.XCloseDisplay(display);
-        }
+    private void sendSpecialKeyWithDisplay(Pointer display, int keycode) {
+        X11.INSTANCE.XTestFakeKeyEvent(display, keycode, true, 0);
+        X11.INSTANCE.XTestFakeKeyEvent(display, keycode, false, 0);
+        X11.INSTANCE.XFlush(display);
     }
 
     @Override
