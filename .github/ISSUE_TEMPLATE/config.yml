@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Official website
+    url: https://www.zzhow.com/MagicKeyboardEN
+    about: Please read the official documentation before submitting an issue, and if that doesn't solve your problem, then ask an issue.
+  - name: 官方网站
+    url: https://www.zzhow.com/MagicKeyboard
+    about: 请在提交问题之前先阅读官方文档，如果还不能解决问题，则再提问题。
