@@ -14,7 +14,7 @@ import java.util.List;
  *
  * @author ZZHow
  * create 2025/10/13
- * update 2025/10/14
+ * update 2025/10/15
  */
 public class WindowsKeyboard implements IKeyboard {
 
@@ -26,22 +26,49 @@ public class WindowsKeyboard implements IKeyboard {
         User32 INSTANCE = Native.load("user32", User32.class, W32APIOptions.DEFAULT_OPTIONS);
 
         int INPUT_KEYBOARD = 1;
+        int INPUT_MOUSE = 0;
+        int INPUT_HARDWARE = 2;
 
         // 按键事件标志
-        int KEY_EVENT_KEYUP = 0x0002;        // 按键释放
-        int KEY_EVENT_UNICODE = 0x0004;      // Unicode 字符
+        int KEYEVENTF_KEYUP = 0x0002;        // 按键释放
+        int KEYEVENTF_UNICODE = 0x0004;      // Unicode 字符
+        int KEYEVENTF_SCANCODE = 0x0008;     // 扫描码
 
         class INPUT extends Structure {
             public int type;
-            public INPUT_UNION inputUnion;
+            public INPUT_UNION input;
+
+            public INPUT() {
+                super();
+            }
 
             @Override
             protected List<String> getFieldOrder() {
-                return Arrays.asList("type", "inputUnion");
+                return Arrays.asList("type", "input");
             }
 
             public static class INPUT_UNION extends Union {
+                public MOUSEINPUT mi;
                 public KEYBDINPUT ki;
+                public HARDWAREINPUT hi;
+
+                public INPUT_UNION() {
+                    super();
+                }
+            }
+        }
+
+        class MOUSEINPUT extends Structure {
+            public WinDef.LONG dx;
+            public WinDef.LONG dy;
+            public WinDef.DWORD mouseData;
+            public WinDef.DWORD dwFlags;
+            public WinDef.DWORD time;
+            public Pointer dwExtraInfo;
+
+            @Override
+            protected List<String> getFieldOrder() {
+                return Arrays.asList("dx", "dy", "mouseData", "dwFlags", "time", "dwExtraInfo");
             }
         }
 
@@ -55,6 +82,17 @@ public class WindowsKeyboard implements IKeyboard {
             @Override
             protected List<String> getFieldOrder() {
                 return Arrays.asList("wVk", "wScan", "dwFlags", "time", "dwExtraInfo");
+            }
+        }
+
+        class HARDWAREINPUT extends Structure {
+            public WinDef.DWORD uMsg;
+            public WinDef.WORD wParamL;
+            public WinDef.WORD wParamH;
+
+            @Override
+            protected List<String> getFieldOrder() {
+                return Arrays.asList("uMsg", "wParamL", "wParamH");
             }
         }
 
@@ -139,30 +177,30 @@ public class WindowsKeyboard implements IKeyboard {
     private void sendUnicodeKey(char c, boolean keyUp) {
         User32.INPUT input = new User32.INPUT();
         input.type = User32.INPUT_KEYBOARD;
-        input.inputUnion = new User32.INPUT.INPUT_UNION();
-        input.inputUnion.ki = new User32.KEYBDINPUT();
+        input.input = new User32.INPUT.INPUT_UNION();
+        input.input.ki = new User32.KEYBDINPUT();
 
         // 使用 Unicode 模式
-        input.inputUnion.ki.wVk = new WinDef.WORD(0);  // 虚拟键码设为 0
-        input.inputUnion.ki.wScan = new WinDef.WORD(c); // Unicode 字符放在 wScan 中
-        input.inputUnion.ki.time = new WinDef.DWORD(0);
-        input.inputUnion.ki.dwExtraInfo = null;
+        input.input.ki.wVk = new WinDef.WORD(0);  // 虚拟键码设为 0
+        input.input.ki.wScan = new WinDef.WORD(c); // Unicode 字符放在 wScan 中
+        input.input.ki.time = new WinDef.DWORD(0);
+        input.input.ki.dwExtraInfo = null;
 
-        // 设置标志：KEY_EVENT_UNICODE + KEY_EVENT_KEYUP
-        int flags = User32.KEY_EVENT_UNICODE;
+        // 设置标志：KEYEVENTF_UNICODE + KEYEVENTF_KEYUP
+        int flags = User32.KEYEVENTF_UNICODE;
         if (keyUp) {
-            flags |= User32.KEY_EVENT_KEYUP;
+            flags |= User32.KEYEVENTF_KEYUP;
         }
-        input.inputUnion.ki.dwFlags = new WinDef.DWORD(flags);
+        input.input.ki.dwFlags = new WinDef.DWORD(flags);
 
-        input.inputUnion.setType(User32.KEYBDINPUT.class);
-        input.inputUnion.write();
+        // 关键：必须先设置 Union 类型，再写入
+        input.input.setType(User32.KEYBDINPUT.class);
         input.write();
 
         User32.INSTANCE.SendInput(1, new User32.INPUT[]{input}, input.size());
     }
 
-    // 可选：如果需要发送特殊按键（如 Enter、Tab 等），可以使用虚拟键码
+    // 发送特殊按键（如 Enter、Tab 等）
     public void sendSpecialKey(int virtualKeyCode) {
         sendVirtualKey(virtualKeyCode, false); // 按下
         sendVirtualKey(virtualKeyCode, true);  // 释放
@@ -171,17 +209,17 @@ public class WindowsKeyboard implements IKeyboard {
     private void sendVirtualKey(int vk, boolean keyUp) {
         User32.INPUT input = new User32.INPUT();
         input.type = User32.INPUT_KEYBOARD;
-        input.inputUnion = new User32.INPUT.INPUT_UNION();
-        input.inputUnion.ki = new User32.KEYBDINPUT();
+        input.input = new User32.INPUT.INPUT_UNION();
+        input.input.ki = new User32.KEYBDINPUT();
 
-        input.inputUnion.ki.wVk = new WinDef.WORD(vk);
-        input.inputUnion.ki.wScan = new WinDef.WORD(0);
-        input.inputUnion.ki.time = new WinDef.DWORD(0);
-        input.inputUnion.ki.dwExtraInfo = null;
-        input.inputUnion.ki.dwFlags = new WinDef.DWORD(keyUp ? User32.KEY_EVENT_KEYUP : 0);
+        input.input.ki.wVk = new WinDef.WORD(vk);
+        input.input.ki.wScan = new WinDef.WORD(0);
+        input.input.ki.time = new WinDef.DWORD(0);
+        input.input.ki.dwExtraInfo = null;
+        input.input.ki.dwFlags = new WinDef.DWORD(keyUp ? User32.KEYEVENTF_KEYUP : 0);
 
-        input.inputUnion.setType(User32.KEYBDINPUT.class);
-        input.inputUnion.write();
+        // 关键：必须先设置 Union 类型，再写入
+        input.input.setType(User32.KEYBDINPUT.class);
         input.write();
 
         User32.INSTANCE.SendInput(1, new User32.INPUT[]{input}, input.size());

@@ -11,4 +11,5 @@ module com.zzhow.magickeyboard {
     opens com.zzhow.magickeyboard.controller to javafx.fxml;
     exports com.zzhow.magickeyboard.window;
     opens com.zzhow.magickeyboard.window to javafx.fxml;
+    exports com.zzhow.magickeyboard.core.impl;
 }
