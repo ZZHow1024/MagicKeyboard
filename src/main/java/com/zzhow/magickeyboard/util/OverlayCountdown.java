@@ -86,8 +86,8 @@ public class OverlayCountdown {
             titleLabel.setMinWidth(titleText.length() * titleFontSize * 0.6);
 
             // 按钮区域 - 水平排列
-            Button pauseResumeButton = new Button("⏯️");
-            Button stopButton = new Button("⏹️");
+            Button pauseResumeButton = new Button("⏯");
+            Button stopButton = new Button("⏹");
 
             // 设置按钮样式
             pauseResumeButton.setStyle("-fx-font-size: 16px; -fx-padding: 8px 12px; -fx-min-width: 40px;");
