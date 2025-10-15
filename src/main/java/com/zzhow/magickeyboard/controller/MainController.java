@@ -4,6 +4,7 @@ import com.zzhow.magickeyboard.core.ControlCenter;
 import com.zzhow.magickeyboard.core.KeyboardInput;
 import com.zzhow.magickeyboard.factory.LongSpinnerValueFactory;
 import com.zzhow.magickeyboard.util.OverlayCountdown;
+import com.zzhow.magickeyboard.window.AboutWindow;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
@@ -100,6 +101,11 @@ public class MainController {
             case "悬浮窗左下" -> OverlayCountdown.Corner.BOTTOM_LEFT;
             default -> OverlayCountdown.Corner.TOP_RIGHT;
         };
+    }
+
+    @FXML
+    private void onButtonExitClicked() {
+        System.exit(0);
     }
 
     // 重置状态
