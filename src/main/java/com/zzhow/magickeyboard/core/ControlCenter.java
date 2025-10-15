@@ -39,10 +39,12 @@ public class ControlCenter {
                 // 已暂停
                 OverlayCountdown.resume();
                 ControlCenter.isPaused = false;
+                onResume.run();
             } else {
                 // 未暂停
                 OverlayCountdown.pause();
                 ControlCenter.isPaused = true;
+                onPaused.run();
             }
         } else if (ControlCenter.isStartInput) {
             // 倒计时结束，开始键入
