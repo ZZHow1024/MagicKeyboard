@@ -35,7 +35,7 @@ public class MainController {
         ControlCenter.onPaused = () -> Platform.runLater(this::pause);
         ControlCenter.onResume = () -> Platform.runLater(this::resume);
         ControlCenter.onResetStatus = () -> Platform.runLater(this::resetStatus);
-        spinner.setValueFactory(new LongSpinnerValueFactory(0L, Long.MAX_VALUE, 10L, 1L));
+        spinner.setValueFactory(new LongSpinnerValueFactory(50L, 1000L, 50L, 1L));
         // 限制只能输入整数
         spinner.getEditor().textProperty().addListener((obs, oldValue, newValue) -> {
             if (!newValue.matches("-?\\d*")) {

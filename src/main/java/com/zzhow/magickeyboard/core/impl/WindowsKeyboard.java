@@ -294,7 +294,7 @@ public class WindowsKeyboard implements IKeyboard {
             // 按下Shift
             sendVirtualKey(User32.VK_SHIFT, false);
             try {
-                Thread.sleep(10);
+                Thread.sleep(ControlCenter.timeInterval);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
@@ -307,7 +307,7 @@ public class WindowsKeyboard implements IKeyboard {
 
         if (needsShift) {
             try {
-                Thread.sleep(10);
+                Thread.sleep(ControlCenter.timeInterval);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }

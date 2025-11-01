@@ -262,7 +262,7 @@ public class MacKeyboard implements IKeyboard {
             CoreGraphics.INSTANCE.CFRelease(shiftDown);
 
             try {
-                Thread.sleep(10); // 短暂延迟确保Shift被识别
+                Thread.sleep(ControlCenter.timeInterval); // 短暂延迟确保Shift被识别
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
@@ -286,7 +286,7 @@ public class MacKeyboard implements IKeyboard {
 
         if (needsShift) {
             try {
-                Thread.sleep(10); // 短暂延迟
+                Thread.sleep(ControlCenter.timeInterval); // 短暂延迟
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }

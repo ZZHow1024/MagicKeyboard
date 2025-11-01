@@ -189,7 +189,7 @@ public class LinuxKeyboard implements IKeyboard {
         if (needsShift) {
             X11.INSTANCE.XTestFakeKeyEvent(display, 50, true, 0); // Left Shift keycode = 50
             try {
-                Thread.sleep(10); // 短暂延迟确保Shift被识别
+                Thread.sleep(ControlCenter.timeInterval);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
@@ -202,7 +202,7 @@ public class LinuxKeyboard implements IKeyboard {
         // 如果按下了 Shift，释放 Shift 键
         if (needsShift) {
             try {
-                Thread.sleep(10); // 短暂延迟
+                Thread.sleep(ControlCenter.timeInterval);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
