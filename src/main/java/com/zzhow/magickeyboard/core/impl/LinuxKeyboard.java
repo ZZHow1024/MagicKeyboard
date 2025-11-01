@@ -11,7 +11,7 @@ import com.zzhow.magickeyboard.core.IKeyboard;
  *
  * @author ZZHow
  * create 2025/10/13
- * update 2025/10/15
+ * update 2025/1/1
  */
 public class LinuxKeyboard implements IKeyboard {
 
@@ -32,8 +32,11 @@ public class LinuxKeyboard implements IKeyboard {
         }
 
         Pointer XOpenDisplay(String display);
+
         void XCloseDisplay(Pointer display);
+
         void XTestFakeKeyEvent(Pointer display, int keycode, boolean is_press, long delay);
+
         void XFlush(Pointer display);
     }
 
@@ -50,8 +53,11 @@ public class LinuxKeyboard implements IKeyboard {
         }
 
         Pointer XOpenDisplay(String display);
+
         void XCloseDisplay(Pointer display);
+
         void XFlush(Pointer display);
+
         long XKeysymToKeycode(Pointer display, long keysym);
     }
 
@@ -158,11 +164,13 @@ public class LinuxKeyboard implements IKeyboard {
      * 发送字符,返回是否成功
      */
     private boolean sendChar(Pointer display, int codePoint) {
-        // 检查是否需要 Shift 键
-        boolean needsShift = needsShiftKey((char) codePoint);
+        char c = (char) codePoint;
 
-        // 将字符/码点转换为 X11 keysym
-        long keysym = charToKeysym(codePoint);
+        // 检查是否需要 Shift 键
+        boolean needsShift = needsShiftKey(c);
+
+        // 将字符转换为基础按键的 keysym (对于大写字母,转换为小写)
+        long keysym = charToKeysym(c, needsShift);
 
         if (keysym == 0) {
             // 静默跳过无法映射的字符(如中文)
@@ -180,6 +188,11 @@ public class LinuxKeyboard implements IKeyboard {
         // 如果需要 Shift，先按下 Shift 键
         if (needsShift) {
             X11.INSTANCE.XTestFakeKeyEvent(display, 50, true, 0); // Left Shift keycode = 50
+            try {
+                Thread.sleep(10); // 短暂延迟确保Shift被识别
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
         }
 
         // 发送按键按下和释放事件
@@ -188,6 +201,11 @@ public class LinuxKeyboard implements IKeyboard {
 
         // 如果按下了 Shift，释放 Shift 键
         if (needsShift) {
+            try {
+                Thread.sleep(10); // 短暂延迟
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
             X11.INSTANCE.XTestFakeKeyEvent(display, 50, false, 0); // Release Shift
         }
 
@@ -204,34 +222,120 @@ public class LinuxKeyboard implements IKeyboard {
             return true;
         }
 
+        // 小写字母不需要 Shift
+        if (c >= 'a' && c <= 'z') {
+            return false;
+        }
+
+        // 数字不需要 Shift
+        if (c >= '0' && c <= '9') {
+            return false;
+        }
+
         // 需要 Shift 的符号（美式键盘布局）
         String shiftSymbols = "!@#$%^&*()_+{}|:\"<>?~";
-        return shiftSymbols.indexOf(c) != -1;
+        if (shiftSymbols.indexOf(c) != -1) {
+            return true;
+        }
+
+        // 不需要 Shift 的符号
+        String noShiftSymbols = "`-=[]\\;',./";
+        if (noShiftSymbols.indexOf(c) != -1) {
+            return false;
+        }
+
+        // 空格不需要 Shift
+        if (c == ' ') {
+            return false;
+        }
+
+        // 其他字符默认不需要 Shift
+        return false;
     }
 
     /**
-     * 将字符/码点转换为 X11 keysym
-     * <p>
-     * X11 keysym 映射规则:
-     * - ASCII (0x20-0x7E): 直接映射
-     * - Latin-1 (0xA0-0xFF): 直接映射
-     * - Unicode (0x100-0x10FFFF): 0x01000000 + 码点
+     * 将字符转换为 X11 keysym
+     * 注意: 对于需要Shift的字符(如大写字母),返回的是基础按键的keysym(小写字母)
+     *
+     * @param c          字符
+     * @param needsShift 是否需要Shift键
+     * @return X11 keysym
      */
-    private long charToKeysym(int codePoint) {
-        // ASCII 可打印字符 (空格到波浪号)
-        if (codePoint >= 0x20 && codePoint <= 0x7E) {
-            return codePoint;
+    private long charToKeysym(char c, boolean needsShift) {
+        // 大写字母: 返回对应小写字母的keysym
+        if (c >= 'A' && c <= 'Z') {
+            return Character.toLowerCase(c);
+        }
+
+        // 小写字母: 直接返回
+        if (c >= 'a' && c <= 'z') {
+            return c;
+        }
+
+        // 数字键: 直接返回 (0-9对应的keysym就是ASCII码)
+        if (c >= '0' && c <= '9') {
+            return c;
+        }
+
+        // 需要Shift的符号: 返回基础按键的keysym
+        switch (c) {
+            case '!':
+                return '1';
+            case '@':
+                return '2';
+            case '#':
+                return '3';
+            case '$':
+                return '4';
+            case '%':
+                return '5';
+            case '^':
+                return '6';
+            case '&':
+                return '7';
+            case '*':
+                return '8';
+            case '(':
+                return '9';
+            case ')':
+                return '0';
+            case '_':
+                return '-';
+            case '+':
+                return '=';
+            case '{':
+                return '[';
+            case '}':
+                return ']';
+            case '|':
+                return '\\';
+            case ':':
+                return ';';
+            case '"':
+                return '\'';
+            case '<':
+                return ',';
+            case '>':
+                return '.';
+            case '?':
+                return '/';
+            case '~':
+                return '`';
+        }
+
+        // 不需要Shift的符号: 直接返回
+        if ((c >= 0x20 && c <= 0x7E)) {
+            return c;
         }
 
         // Latin-1 补充字符
-        if (codePoint >= 0x00A0 && codePoint <= 0x00FF) {
-            return codePoint;
+        if (c >= 0x00A0 && c <= 0x00FF) {
+            return c;
         }
 
         // Unicode 字符使用 0x01000000 + 码点
-        // 这是 X11 标准的 Unicode keysym 表示方法
-        if (codePoint >= 0x0100 && codePoint <= 0x10FFFF) {
-            return 0x01000000L + codePoint;
+        if (c >= 0x0100 && c <= 0xFFFF) {
+            return 0x01000000L + c;
         }
 
         // 无法映射的字符,返回0表示跳过
