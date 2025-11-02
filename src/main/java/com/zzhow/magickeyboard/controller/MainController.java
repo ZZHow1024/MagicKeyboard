@@ -27,6 +27,8 @@ public class MainController {
     @FXML
     private Spinner<Long> spinner;
     @FXML
+    private ChoiceBox<String> choiceBoxMode;
+    @FXML
     private ChoiceBox<String> choiceBoxPosition;
 
     @FXML
@@ -52,6 +54,8 @@ public class MainController {
                 }
             }
         });
+        choiceBoxMode.getItems().addAll("兼容模式", "极速模式");
+        choiceBoxMode.setValue("兼容模式");
         choiceBoxPosition.getItems().addAll("悬浮窗右上", "悬浮窗左上", "悬浮窗右下", "悬浮窗左下");
         choiceBoxPosition.setValue("悬浮窗右上");
     }
@@ -94,13 +98,17 @@ public class MainController {
 
     @FXML
     private void switchPosition() {
-        ControlCenter.floatingWindowPosition = switch (choiceBoxPosition.getValue()) {
-            case "悬浮窗右上" -> OverlayCountdown.Corner.TOP_RIGHT;
-            case "悬浮窗左上" -> OverlayCountdown.Corner.TOP_LEFT;
-            case "悬浮窗右下" -> OverlayCountdown.Corner.BOTTOM_RIGHT;
-            case "悬浮窗左下" -> OverlayCountdown.Corner.BOTTOM_LEFT;
-            default -> OverlayCountdown.Corner.TOP_RIGHT;
-        };
+        if (choiceBoxPosition.getValue() == null) {
+            ControlCenter.floatingWindowPosition = OverlayCountdown.Corner.TOP_RIGHT;
+        } else {
+            ControlCenter.floatingWindowPosition = switch (choiceBoxPosition.getValue()) {
+                case "悬浮窗右上" -> OverlayCountdown.Corner.TOP_RIGHT;
+                case "悬浮窗左上" -> OverlayCountdown.Corner.TOP_LEFT;
+                case "悬浮窗右下" -> OverlayCountdown.Corner.BOTTOM_RIGHT;
+                case "悬浮窗左下" -> OverlayCountdown.Corner.BOTTOM_LEFT;
+                default -> OverlayCountdown.Corner.TOP_RIGHT;
+            };
+        }
     }
 
     @FXML
