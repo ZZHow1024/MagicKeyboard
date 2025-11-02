@@ -15,7 +15,7 @@ import com.zzhow.magickeyboard.core.IKeyboard;
  *
  * @author ZZHow
  * create 2025/10/13
- * update 2025/10/30
+ * update 2025/11/2
  */
 public class MacKeyboard implements IKeyboard {
 
@@ -194,7 +194,7 @@ public class MacKeyboard implements IKeyboard {
     }
 
     @Override
-    public void sendText(String text) {
+    public void sendText(String text, ControlCenter.Mode mode) {
         isStopped = false;
         isPaused = false;
 
@@ -223,7 +223,7 @@ public class MacKeyboard implements IKeyboard {
 
             char c = text.charAt(i);
 
-            // 处理特殊按键
+            // 处理特殊按键（两种模式都需要）
             if (c == '\n') {
                 sendSpecialKey((short) 36); // kVK_Return
                 continue;
@@ -232,7 +232,15 @@ public class MacKeyboard implements IKeyboard {
                 continue;
             }
 
-            sendChar(c);
+            // 根据模式选择发送方式
+            if (mode == ControlCenter.Mode.RAPID_MODE) {
+                // 极速模式：所有字符都使用Unicode方式
+                sendCharUnicode(c);
+            } else {
+                // 兼容模式：使用原有的虚拟键码方式
+                sendChar(c);
+            }
+
             try {
                 Thread.sleep(ControlCenter.timeInterval);
             } catch (InterruptedException e) {
@@ -298,7 +306,7 @@ public class MacKeyboard implements IKeyboard {
         }
     }
 
-    // Unicode方式作为后备(用于没有映射的特殊字符)
+    // Unicode方式（用于极速模式或没有映射的特殊字符）
     private void sendCharUnicode(char c) {
         Pointer keyDown = CoreGraphics.INSTANCE.CGEventCreateKeyboardEvent(null, (short) 0, true);
         char[] chars = {c};
