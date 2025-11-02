@@ -23,7 +23,7 @@ import java.util.Map;
  *
  * @author ZZHow
  * create 2025/10/13
- * update 2025/10/31
+ * update 2025/11/2
  */
 public class WindowsKeyboard implements IKeyboard {
 
@@ -218,7 +218,7 @@ public class WindowsKeyboard implements IKeyboard {
     }
 
     @Override
-    public void sendText(String text) {
+    public void sendText(String text, ControlCenter.Mode mode) {
         isStopped = false;
         isPaused = false;
 
@@ -247,7 +247,7 @@ public class WindowsKeyboard implements IKeyboard {
 
             char c = text.charAt(i);
 
-            // 处理特殊按键
+            // 处理特殊按键（两种模式都需要）
             if (c == '\n') {
                 sendSpecialKey(User32.VK_RETURN);
                 continue;
@@ -256,18 +256,35 @@ public class WindowsKeyboard implements IKeyboard {
                 continue;
             }
 
-            // 处理代理对（Surrogate Pairs）
-            if (Character.isHighSurrogate(c) && i + 1 < text.length()) {
-                char low = text.charAt(i + 1);
-                if (Character.isLowSurrogate(low)) {
-                    sendUnicodeChar(c);
-                    sendUnicodeChar(low);
-                    i++;
-                    continue;
+            // 根据模式选择发送方式
+            if (mode == ControlCenter.Mode.RAPID_MODE) {
+                // 极速模式：所有字符都使用Unicode方式
+                // 处理代理对（Surrogate Pairs）
+                if (Character.isHighSurrogate(c) && i + 1 < text.length()) {
+                    char low = text.charAt(i + 1);
+                    if (Character.isLowSurrogate(low)) {
+                        sendUnicodeChar(c);
+                        sendUnicodeChar(low);
+                        i++;
+                        continue;
+                    }
                 }
+                sendUnicodeChar(c);
+            } else {
+                // 兼容模式：使用原有的虚拟键码方式
+                // 处理代理对（Surrogate Pairs）
+                if (Character.isHighSurrogate(c) && i + 1 < text.length()) {
+                    char low = text.charAt(i + 1);
+                    if (Character.isLowSurrogate(low)) {
+                        sendUnicodeChar(c);
+                        sendUnicodeChar(low);
+                        i++;
+                        continue;
+                    }
+                }
+                sendChar(c);
             }
 
-            sendChar(c);
             try {
                 Thread.sleep(ControlCenter.timeInterval);
             } catch (InterruptedException e) {

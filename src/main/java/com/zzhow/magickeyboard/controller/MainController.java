@@ -15,7 +15,7 @@ import javafx.scene.paint.Color;
  *
  * @author ZZHow
  * create 2025/10/13
- * update 2025/10/14
+ * update 2025/11/2
  */
 public class MainController {
     @FXML
@@ -37,7 +37,7 @@ public class MainController {
         ControlCenter.onPaused = () -> Platform.runLater(this::pause);
         ControlCenter.onResume = () -> Platform.runLater(this::resume);
         ControlCenter.onResetStatus = () -> Platform.runLater(this::resetStatus);
-        spinner.setValueFactory(new LongSpinnerValueFactory(50L, 1000L, 50L, 1L));
+        spinner.setValueFactory(new LongSpinnerValueFactory(10L, 1000L, 35L, 1L));
         // 限制只能输入整数
         spinner.getEditor().textProperty().addListener((obs, oldValue, newValue) -> {
             if (!newValue.matches("-?\\d*")) {
@@ -81,7 +81,7 @@ public class MainController {
             this.buttonClear.setText("停止");
             OverlayCountdown.show(3, 0.5, Color.BLACK, 80, ControlCenter.floatingWindowPosition, () -> {
                 ControlCenter.isStartInput = true;
-                KeyboardInput.sendText(textArea.getText());
+                KeyboardInput.sendText(textArea.getText(), ControlCenter.mode);
                 Platform.runLater(this::resetStatus);
             });
         } else {
@@ -93,6 +93,25 @@ public class MainController {
                 // 未暂停
                 ControlCenter.resumeOrPause();
             }
+        }
+    }
+
+    @FXML
+    private void switchMode() {
+        if (choiceBoxMode.getValue() == null) {
+            ControlCenter.mode = ControlCenter.Mode.COMPATIBLE_MODE;
+        } else {
+            ControlCenter.mode = switch (choiceBoxMode.getValue()) {
+                case "兼容模式" -> ControlCenter.Mode.COMPATIBLE_MODE;
+                case "极速模式" -> ControlCenter.Mode.RAPID_MODE;
+                default -> ControlCenter.Mode.COMPATIBLE_MODE;
+            };
+        }
+
+        if (ControlCenter.mode == ControlCenter.Mode.COMPATIBLE_MODE) {
+            spinner.setValueFactory(new LongSpinnerValueFactory(10L, 1000L, 35L, 1L));
+        } else {
+            spinner.setValueFactory(new LongSpinnerValueFactory(0L, 1000L, 10L, 1L));
         }
     }
 

@@ -9,7 +9,7 @@ import com.zzhow.magickeyboard.core.impl.WindowsKeyboard;
  *
  * @author ZZHow
  * create 2025/10/13
- * update 2025/10/14
+ * update 2025/11/2
  */
 
 public class KeyboardInput {
@@ -32,8 +32,15 @@ public class KeyboardInput {
     /**
      * 根据传入的字符串开始键盘输入
      */
+    public static void sendText(String text, ControlCenter.Mode mode) {
+        keyboardImpl.sendText(text, mode);
+    }
+    
+    /**
+     * 根据传入的字符串开始键盘输入（默认使用兼容模式）
+     */
     public static void sendText(String text) {
-        keyboardImpl.sendText(text);
+        keyboardImpl.sendText(text, ControlCenter.Mode.COMPATIBLE_MODE);
     }
 
     /**

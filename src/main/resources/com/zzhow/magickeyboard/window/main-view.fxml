@@ -36,7 +36,7 @@
             <HBox spacing="20" style="-fx-alignment: center;">
                 <Button fx:id="buttonStart" mnemonicParsing="false" onAction="#onButtonStartClicked" prefHeight="35"
                         prefWidth="100" text="开始键入"/>
-                <ChoiceBox fx:id="choiceBoxMode" onAction="#switchPosition"/>
+                <ChoiceBox fx:id="choiceBoxMode" onAction="#switchMode"/>
                 <Button fx:id="buttonClear" mnemonicParsing="false" onAction="#onButtonClearClicked" prefHeight="35"
                         prefWidth="100" text="清空"/>
             </HBox>
