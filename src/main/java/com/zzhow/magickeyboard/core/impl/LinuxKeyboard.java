@@ -11,7 +11,7 @@ import com.zzhow.magickeyboard.core.IKeyboard;
  *
  * @author ZZHow
  * create 2025/10/13
- * update 2025/1/1
+ * update 2025/11/2
  */
 public class LinuxKeyboard implements IKeyboard {
 
@@ -62,7 +62,7 @@ public class LinuxKeyboard implements IKeyboard {
     }
 
     @Override
-    public void sendText(String text) {
+    public void sendText(String text, ControlCenter.Mode mode) {
         // 重置状态
         isStopped = false;
         isPaused = false;
@@ -93,7 +93,7 @@ public class LinuxKeyboard implements IKeyboard {
 
                 char c = text.charAt(i);
 
-                // 处理特殊按键
+                // 处理特殊按键（两种模式都需要）
                 if (c == '\n') { // 回车键
                     sendSpecialKeyWithDisplay(display, 36); // Enter keycode
                     sleep();
@@ -110,7 +110,7 @@ public class LinuxKeyboard implements IKeyboard {
                     if (Character.isLowSurrogate(low)) {
                         int codePoint = Character.toCodePoint(c, low);
                         // 尝试发送,如果无法发送则跳过
-                        if (sendChar(display, codePoint)) {
+                        if (sendCharByMode(display, codePoint, mode)) {
                             sleep();
                         }
                         i++; // 跳过低位代理
@@ -118,8 +118,8 @@ public class LinuxKeyboard implements IKeyboard {
                     }
                 }
 
-                // 发送普通字符,如果无法发送则跳过
-                if (sendChar(display, c)) {
+                // 根据模式发送普通字符
+                if (sendCharByMode(display, c, mode)) {
                     sleep();
                 }
             }
@@ -127,6 +127,19 @@ public class LinuxKeyboard implements IKeyboard {
         } finally {
             Xlib.INSTANCE.XFlush(display);
             Xlib.INSTANCE.XCloseDisplay(display);
+        }
+    }
+
+    /**
+     * 根据模式发送字符
+     */
+    private boolean sendCharByMode(Pointer display, int codePoint, ControlCenter.Mode mode) {
+        if (mode == ControlCenter.Mode.RAPID_MODE) {
+            // 极速模式：使用 Unicode 方式
+            return sendCharUnicode(display, codePoint);
+        } else {
+            // 兼容模式：使用虚拟键码方式
+            return sendChar(display, codePoint);
         }
     }
 
@@ -161,7 +174,7 @@ public class LinuxKeyboard implements IKeyboard {
     }
 
     /**
-     * 发送字符,返回是否成功
+     * 兼容模式：发送字符（使用虚拟键码 + Shift）
      */
     private boolean sendChar(Pointer display, int codePoint) {
         char c = (char) codePoint;
@@ -208,6 +221,41 @@ public class LinuxKeyboard implements IKeyboard {
             }
             X11.INSTANCE.XTestFakeKeyEvent(display, 50, false, 0); // Release Shift
         }
+
+        X11.INSTANCE.XFlush(display);
+        return true;
+    }
+
+    /**
+     * 极速模式：使用 Unicode 方式发送字符
+     */
+    private boolean sendCharUnicode(Pointer display, int codePoint) {
+        char c = (char) codePoint;
+
+        // 直接使用 Unicode keysym (0x01000000 + 码点)
+        long keysym;
+        if (c <= 0x7E) {
+            // ASCII 字符直接使用
+            keysym = c;
+        } else if (c >= 0x00A0 && c <= 0x00FF) {
+            // Latin-1 补充字符
+            keysym = c;
+        } else {
+            // Unicode 字符使用 0x01000000 + 码点
+            keysym = 0x01000000L + c;
+        }
+
+        // 将 keysym 转换为 keycode
+        long keycode = Xlib.INSTANCE.XKeysymToKeycode(display, keysym);
+
+        if (keycode == 0) {
+            // 静默跳过无法找到keycode的字符
+            return false;
+        }
+
+        // 发送按键按下和释放事件（不使用 Shift）
+        X11.INSTANCE.XTestFakeKeyEvent(display, (int) keycode, true, 0);
+        X11.INSTANCE.XTestFakeKeyEvent(display, (int) keycode, false, 0);
 
         X11.INSTANCE.XFlush(display);
         return true;
