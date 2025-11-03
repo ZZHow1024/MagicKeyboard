@@ -36,7 +36,7 @@ public class MainController {
     @FXML
     private Label labelMillisecond;
     @FXML
-    private CheckBox checkBox;
+    private CheckBox checkboxIgnoreLeadingWhitespace;
     @FXML
     private ChoiceBox<String> choiceBoxMode;
     @FXML
@@ -181,7 +181,7 @@ public class MainController {
 
     @FXML
     private void onCheckBoxClicked() {
-        ControlCenter.isIgnoreLeadingWhitespace = checkBox.isSelected();
+        ControlCenter.isIgnoreLeadingWhitespace = checkboxIgnoreLeadingWhitespace.isSelected();
     }
 
     @FXML
@@ -218,6 +218,9 @@ public class MainController {
         // 更新标签文本
         this.labelTypeInterval.setText(bundle.getString("main.labelTypeInterval"));
         this.labelMillisecond.setText(bundle.getString("main.labelMillisecond"));
+
+        // 更新复选框文本
+        this.checkboxIgnoreLeadingWhitespace.setText(bundle.getString("main.checkboxIgnoreLeadingWhitespace"));
 
         // 更新选择框内容
         ControlCenter.Mode mode = ControlCenter.mode;
