@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import javafx.scene.control.Button?>
+<?import javafx.scene.control.CheckBox?>
 <?import javafx.scene.control.ChoiceBox?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.Spinner?>
@@ -11,14 +12,15 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<BorderPane minHeight="300" minWidth="600" prefHeight="520" prefWidth="780" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.zzhow.magickeyboard.controller.MainController">
+<BorderPane minHeight="300" minWidth="600" prefHeight="520" prefWidth="780" xmlns="http://javafx.com/javafx/21"
+            xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.zzhow.magickeyboard.controller.MainController">
 
     <!-- 顶部标题 -->
     <top>
         <VBox alignment="CENTER" style="-fx-padding: 10;">
             <Label text="MagicKeyboard">
                 <font>
-                    <Font size="25.0" />
+                    <Font size="25.0"/>
                 </font>
             </Label>
         </VBox>
@@ -26,33 +28,39 @@
 
     <!-- 中央文本区域 -->
     <center>
-        <TextArea fx:id="textArea" style="-fx-margin: 10;" HBox.hgrow="ALWAYS" VBox.vgrow="ALWAYS" />
+        <TextArea fx:id="textArea" style="-fx-margin: 10;" HBox.hgrow="ALWAYS" VBox.vgrow="ALWAYS"/>
     </center>
 
     <!-- 底部按钮区域 -->
     <bottom>
         <VBox spacing="10" style="-fx-alignment: center; -fx-padding: 10;">
             <HBox spacing="20" style="-fx-alignment: center;">
-                <Button fx:id="buttonStart" mnemonicParsing="false" onAction="#onButtonStartClicked" prefHeight="35" prefWidth="100" text="开始键入" />
-                <ChoiceBox fx:id="choiceBoxMode" onAction="#switchMode" />
-                <Button fx:id="buttonClear" mnemonicParsing="false" onAction="#onButtonClearClicked" prefHeight="35" prefWidth="100" text="清空" />
+                <Button fx:id="buttonStart" mnemonicParsing="false" onAction="#onButtonStartClicked" prefHeight="35"
+                        prefWidth="100" text="开始键入"/>
+                <ChoiceBox fx:id="choiceBoxMode" onAction="#switchMode"/>
+                <Button fx:id="buttonClear" mnemonicParsing="false" onAction="#onButtonClearClicked" prefHeight="35"
+                        prefWidth="100" text="清空"/>
             </HBox>
             <!-- 间隔设置区域 - 响应式布局 -->
             <HBox alignment="CENTER" prefWidth="760.0" spacing="10">
-                <Label fx:id="labelTypeInterval" style="-fx-alignment: center-right;" text="键入间隔" textAlignment="RIGHT" />
-                <Spinner fx:id="spinner" editable="true" />
-                <Label fx:id="labelMillisecond" text="毫秒(ms)" />
+                <Label fx:id="labelTypeInterval" style="-fx-alignment: center-right;" text="键入间隔"
+                       textAlignment="RIGHT"/>
+                <Spinner fx:id="spinner" editable="true"/>
+                <Label fx:id="labelMillisecond" text="毫秒(ms)"/>
             </HBox>
+            <CheckBox fx:id="checkBox" mnemonicParsing="false" onAction="#onCheckBoxClicked"
+                      text="忽略每行行首的空字符"/>
 
-            <ChoiceBox fx:id="choiceBoxPosition" onAction="#switchPosition" />
+            <ChoiceBox fx:id="choiceBoxPosition" onAction="#switchPosition"/>
 
             <!-- 底部信息区域 - 响应式布局 -->
             <HBox alignment="CENTER" prefWidth="760.0" style="-fx-padding: 0 5 0 5;">
-                <Button fx:id="buttonAbout" mnemonicParsing="false" onAction="#onButtonAboutClicked" text="关于" prefWidth="100" />
-                <Region HBox.hgrow="ALWAYS" />
-                <Label style="-fx-text-fill: gray;" text="ZZHow" />
-                <Region HBox.hgrow="ALWAYS" />
-                <ChoiceBox fx:id="choiceBoxLanguage" onAction="#switchLanguage" prefWidth="100" />
+                <Button fx:id="buttonAbout" mnemonicParsing="false" onAction="#onButtonAboutClicked" prefWidth="100"
+                        text="关于"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Label style="-fx-text-fill: gray;" text="ZZHow"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <ChoiceBox fx:id="choiceBoxLanguage" onAction="#switchLanguage" prefWidth="100"/>
             </HBox>
         </VBox>
     </bottom>

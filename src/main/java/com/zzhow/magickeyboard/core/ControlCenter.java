@@ -25,6 +25,7 @@ public class ControlCenter {
     public static Runnable onResetStatus;
 
     public static Mode mode = Mode.COMPATIBLE_MODE; // 键入模式
+    public static boolean isIgnoreLeadingWhitespace = false; // 是否忽略每行行首的空字符
 
     // 多语言
     public static ResourceBundle bundle = ResourceBundle.getBundle("MessagesBundle", Locale.of("zh", "HANS"));

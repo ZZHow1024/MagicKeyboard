@@ -36,6 +36,8 @@ public class MainController {
     @FXML
     private Label labelMillisecond;
     @FXML
+    private CheckBox checkBox;
+    @FXML
     private ChoiceBox<String> choiceBoxMode;
     @FXML
     private ChoiceBox<String> choiceBoxPosition;
@@ -175,6 +177,11 @@ public class MainController {
     @FXML
     private void onButtonAboutClicked() {
         AboutWindow.open();
+    }
+
+    @FXML
+    private void onCheckBoxClicked() {
+        ControlCenter.isIgnoreLeadingWhitespace = checkBox.isSelected();
     }
 
     @FXML
