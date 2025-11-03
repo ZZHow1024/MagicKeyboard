@@ -79,6 +79,8 @@ public class MainController {
             language = "en_US";
         }
 
+        OverlayCountdown.setLanguage(language);
+
         language = switch (language) {
             case "zh_HANS" -> "简体中文";
             case "zh_HANT" -> "繁體中文";
@@ -179,6 +181,8 @@ public class MainController {
             default -> "zh_HANS";
         };
 
+        OverlayCountdown.setLanguage(selectorValue);
+
         ControlCenter.setLanguage(selectorValue);
         ResourceBundle bundle = ControlCenter.bundle;
 
@@ -194,10 +198,10 @@ public class MainController {
             this.buttonStart.setText(bundle.getString("main.buttonStart"));
             this.buttonClear.setText(bundle.getString("main.buttonClear"));
         }
-        
+
         // 更新关于按钮文本
         this.buttonAbout.setText(bundle.getString("main.buttonAbout"));
-        
+
         // 更新标签文本
         this.labelTypeInterval.setText(bundle.getString("main.labelTypeInterval"));
         this.labelMillisecond.setText(bundle.getString("main.labelMillisecond"));
@@ -205,9 +209,9 @@ public class MainController {
         // 更新选择框内容
         choiceBoxMode.getItems().clear();
         choiceBoxMode.getItems().addAll(bundle.getString("main.compatibleMode"), bundle.getString("main.rapidMode"));
-        choiceBoxMode.setValue(ControlCenter.mode == ControlCenter.Mode.COMPATIBLE_MODE ? 
+        choiceBoxMode.setValue(ControlCenter.mode == ControlCenter.Mode.COMPATIBLE_MODE ?
                 bundle.getString("main.compatibleMode") : bundle.getString("main.rapidMode"));
-        
+
         choiceBoxPosition.getItems().clear();
         choiceBoxPosition.getItems().addAll(
                 bundle.getString("main.floatingWindowTopRight"),
@@ -215,7 +219,7 @@ public class MainController {
                 bundle.getString("main.floatingWindowBottomRight"),
                 bundle.getString("main.floatingWindowBottomLeft")
         );
-        
+
         // 根据当前位置设置选择框的值
         String positionValue = switch (ControlCenter.floatingWindowPosition) {
             case TOP_RIGHT -> bundle.getString("main.floatingWindowTopRight");

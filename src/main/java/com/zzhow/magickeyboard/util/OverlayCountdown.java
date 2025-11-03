@@ -16,12 +16,14 @@ import javafx.util.Duration;
 import javafx.geometry.Pos;
 import javafx.scene.layout.VBox;
 
+import java.util.ResourceBundle;
+
 /**
  * 透明倒计时蒙层工具类
  *
  * @author ZZHow
  * create 2025/10/13
- * update 2025/10/14
+ * update 2025/11/3
  */
 public class OverlayCountdown {
     private static Timeline currentTimeline;
@@ -31,6 +33,8 @@ public class OverlayCountdown {
     private static double remainingSeconds = 0;
     private static FadeTransition currentFadeOut;
     private static Label currentCountdownLabel;
+    private static ResourceBundle bundle;
+    private static String currentLanguage = "zh_HANS";
 
     public enum Corner {
         TOP_LEFT, TOP_RIGHT, BOTTOM_LEFT, BOTTOM_RIGHT
@@ -55,6 +59,9 @@ public class OverlayCountdown {
             isPaused = false;
             remainingSeconds = seconds;
 
+            // 加载语言资源
+            bundle = ResourceBundle.getBundle("MessagesBundle_" + currentLanguage);
+
             Stage overlayStage = new Stage();
             overlayStage.initStyle(StageStyle.TRANSPARENT);
             overlayStage.setAlwaysOnTop(true);
@@ -75,7 +82,7 @@ public class OverlayCountdown {
 
             String titleText = "MagicKeyboard";
             int titleFontSize = 20;
-            titleLabel = new Label("MagicKeyboard");
+            titleLabel = new Label(titleText);
             titleLabel.setTextFill(Color.WHITE);
             titleLabel.setStyle("-fx-font-weight: bold; -fx-wrap-text: true; -fx-text-alignment: center;");
             titleLabel.setFont(javafx.scene.text.Font.font(20));
@@ -209,7 +216,7 @@ public class OverlayCountdown {
                                 fade.setCycleCount(Timeline.INDEFINITE);
                                 fade.setAutoReverse(true);
                                 fade.play();
-                                countdownLabel.setText("正在键入");
+                                countdownLabel.setText(bundle.getString("overlay.typing"));
                             } else {
                                 countdownLabel.setText(String.valueOf(remaining));
                             }
@@ -266,6 +273,32 @@ public class OverlayCountdown {
     }
 
     /**
+     * 设置当前语言
+     *
+     * @param language 语言代码，如 en_US, zh_HANS, zh_HANT
+     */
+    public static void setLanguage(String language) {
+        currentLanguage = language;
+
+        // 如果当前有显示的悬浮窗，更新其文本
+        if (currentStage != null && currentStage.isShowing()) {
+            try {
+                bundle = ResourceBundle.getBundle("MessagesBundle_" + language);
+
+                if (currentCountdownLabel != null && remainingSeconds == 0) {
+                    if (isPaused) {
+                        currentCountdownLabel.setText(bundle.getString("overlay.paused"));
+                    } else {
+                        currentCountdownLabel.setText(bundle.getString("overlay.typing"));
+                    }
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    /**
      * 暂停倒计时
      */
     public static void pause() {
@@ -278,7 +311,7 @@ public class OverlayCountdown {
 
             // 如果倒计时已经结束（剩余秒数为0），更新显示文字为"已暂停"
             if (remainingSeconds == 0 && currentCountdownLabel != null) {
-                currentCountdownLabel.setText("已暂停");
+                currentCountdownLabel.setText(bundle.getString("overlay.paused"));
             }
         });
     }
@@ -296,7 +329,7 @@ public class OverlayCountdown {
 
             // 如果倒计时已经结束（剩余秒数为0），恢复显示"正在键入"
             if (remainingSeconds == 0 && currentCountdownLabel != null) {
-                currentCountdownLabel.setText("正在键入");
+                currentCountdownLabel.setText(bundle.getString("overlay.typing"));
             }
         });
     }
