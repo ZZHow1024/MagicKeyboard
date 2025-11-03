@@ -10,12 +10,15 @@ import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.paint.Color;
 
+import java.util.Locale;
+import java.util.ResourceBundle;
+
 /**
  * 主窗口控制类
  *
  * @author ZZHow
  * create 2025/10/13
- * update 2025/11/2
+ * update 2025/11/3
  */
 public class MainController {
     @FXML
@@ -25,11 +28,19 @@ public class MainController {
     @FXML
     private Button buttonClear;
     @FXML
+    private Button buttonAbout;
+    @FXML
     private Spinner<Long> spinner;
+    @FXML
+    private Label labelTypeInterval;
+    @FXML
+    private Label labelMillisecond;
     @FXML
     private ChoiceBox<String> choiceBoxMode;
     @FXML
     private ChoiceBox<String> choiceBoxPosition;
+    @FXML
+    private ChoiceBox<String> choiceBoxLanguage;
 
     @FXML
     private void initialize() {
@@ -54,6 +65,29 @@ public class MainController {
                 }
             }
         });
+
+        choiceBoxLanguage.getItems().addAll("简体中文", "繁體中文", "English");
+        String language = Locale.getDefault().toLanguageTag();
+        if (language.contains("zh")) {
+            if (language.contains("CN") || language.contains("cn"))
+                language = "zh_HANS";
+            else if (language.contains("HANS") || language.contains("Hans"))
+                language = "zh_HANS";
+            else
+                language = "zh_HANT";
+        } else {
+            language = "en_US";
+        }
+
+        language = switch (language) {
+            case "zh_HANS" -> "简体中文";
+            case "zh_HANT" -> "繁體中文";
+            case "en_US" -> "English";
+            default -> "简体中文";
+        };
+        choiceBoxLanguage.setValue(language);
+        switchLanguage();
+
         choiceBoxMode.getItems().addAll("兼容模式", "极速模式");
         choiceBoxMode.setValue("兼容模式");
         choiceBoxPosition.getItems().addAll("悬浮窗右上", "悬浮窗左上", "悬浮窗右下", "悬浮窗左下");
@@ -136,8 +170,60 @@ public class MainController {
     }
 
     @FXML
-    private void onButtonExitClicked() {
-        System.exit(0);
+    private void switchLanguage() {
+        String selectorValue = choiceBoxLanguage.getValue();
+        selectorValue = switch (selectorValue) {
+            case "简体中文" -> "zh_HANS";
+            case "繁體中文" -> "zh_HANT";
+            case "English" -> "en_US";
+            default -> "zh_HANS";
+        };
+
+        ControlCenter.setLanguage(selectorValue);
+        ResourceBundle bundle = ControlCenter.bundle;
+
+        // 更新按钮文本
+        if (ControlCenter.isStartInput) {
+            if (ControlCenter.isPaused) {
+                this.buttonStart.setText(bundle.getString("main.buttonResume"));
+            } else {
+                this.buttonStart.setText(bundle.getString("main.buttonPause"));
+            }
+            this.buttonClear.setText(bundle.getString("main.buttonStop"));
+        } else {
+            this.buttonStart.setText(bundle.getString("main.buttonStart"));
+            this.buttonClear.setText(bundle.getString("main.buttonClear"));
+        }
+        
+        // 更新关于按钮文本
+        this.buttonAbout.setText(bundle.getString("main.buttonAbout"));
+        
+        // 更新标签文本
+        this.labelTypeInterval.setText(bundle.getString("main.labelTypeInterval"));
+        this.labelMillisecond.setText(bundle.getString("main.labelMillisecond"));
+
+        // 更新选择框内容
+        choiceBoxMode.getItems().clear();
+        choiceBoxMode.getItems().addAll(bundle.getString("main.compatibleMode"), bundle.getString("main.rapidMode"));
+        choiceBoxMode.setValue(ControlCenter.mode == ControlCenter.Mode.COMPATIBLE_MODE ? 
+                bundle.getString("main.compatibleMode") : bundle.getString("main.rapidMode"));
+        
+        choiceBoxPosition.getItems().clear();
+        choiceBoxPosition.getItems().addAll(
+                bundle.getString("main.floatingWindowTopRight"),
+                bundle.getString("main.floatingWindowTopLeft"),
+                bundle.getString("main.floatingWindowBottomRight"),
+                bundle.getString("main.floatingWindowBottomLeft")
+        );
+        
+        // 根据当前位置设置选择框的值
+        String positionValue = switch (ControlCenter.floatingWindowPosition) {
+            case TOP_RIGHT -> bundle.getString("main.floatingWindowTopRight");
+            case TOP_LEFT -> bundle.getString("main.floatingWindowTopLeft");
+            case BOTTOM_RIGHT -> bundle.getString("main.floatingWindowBottomRight");
+            case BOTTOM_LEFT -> bundle.getString("main.floatingWindowBottomLeft");
+        };
+        choiceBoxPosition.setValue(positionValue);
     }
 
     // 重置状态

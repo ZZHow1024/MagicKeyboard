@@ -3,12 +3,15 @@ package com.zzhow.magickeyboard.core;
 import com.zzhow.magickeyboard.util.OverlayCountdown;
 import javafx.scene.paint.Color;
 
+import java.util.Locale;
+import java.util.ResourceBundle;
+
 /**
  * 控制中心类
  *
  * @author ZZHow
  * create 2025/10/14
- * update 2025/11/2
+ * update 2025/11/3
  */
 public class ControlCenter {
     public static OverlayCountdown.Corner floatingWindowPosition = OverlayCountdown.Corner.BOTTOM_RIGHT; // 悬浮窗位置
@@ -22,6 +25,10 @@ public class ControlCenter {
     public static Runnable onResetStatus;
 
     public static Mode mode = Mode.COMPATIBLE_MODE; // 键入模式
+
+    // 多语言
+    public static ResourceBundle bundle = ResourceBundle.getBundle("MessagesBundle", Locale.of("zh", "HANS"));
+    private static String language = "zh_HANS";
 
     public enum Mode {
         COMPATIBLE_MODE, // 兼容模式
@@ -69,5 +76,14 @@ public class ControlCenter {
                 onPaused.run();
             }
         }
+    }
+
+    public static String getLanguage() {
+        return language;
+    }
+
+    public static void setLanguage(String language) {
+        ControlCenter.language = language;
+        bundle = ResourceBundle.getBundle("MessagesBundle", Locale.of(language.split("_")[0], language.split("_")[1]));
     }
 }
