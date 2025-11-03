@@ -89,11 +89,6 @@ public class MainController {
         };
         choiceBoxLanguage.setValue(language);
         switchLanguage();
-
-        choiceBoxMode.getItems().addAll("兼容模式", "极速模式");
-        choiceBoxMode.setValue("兼容模式");
-        choiceBoxPosition.getItems().addAll("悬浮窗右上", "悬浮窗左上", "悬浮窗右下", "悬浮窗左下");
-        choiceBoxPosition.setValue("悬浮窗右上");
     }
 
     @FXML
@@ -113,8 +108,9 @@ public class MainController {
         if (!ControlCenter.isCountdown && !ControlCenter.isStartInput) {
             // 既没开始倒计时，也没在键入
             ControlCenter.isCountdown = true;
-            this.buttonStart.setText("暂停");
-            this.buttonClear.setText("停止");
+            ResourceBundle bundle = ControlCenter.bundle;
+            this.buttonStart.setText(bundle.getString("main.buttonPause"));
+            this.buttonClear.setText(bundle.getString("main.buttonStop"));
             OverlayCountdown.show(3, 0.5, Color.BLACK, 80, ControlCenter.floatingWindowPosition, () -> {
                 ControlCenter.isStartInput = true;
                 KeyboardInput.sendText(textArea.getText(), ControlCenter.mode);
@@ -137,9 +133,13 @@ public class MainController {
         if (choiceBoxMode.getValue() == null) {
             ControlCenter.mode = ControlCenter.Mode.COMPATIBLE_MODE;
         } else {
+            ResourceBundle bundle = ControlCenter.bundle;
+            String compatibleMode = bundle.getString("main.compatibleMode");
+            String rapidMode = bundle.getString("main.rapidMode");
+
             ControlCenter.mode = switch (choiceBoxMode.getValue()) {
-                case "兼容模式" -> ControlCenter.Mode.COMPATIBLE_MODE;
-                case "极速模式" -> ControlCenter.Mode.RAPID_MODE;
+                case String s when s.equals(compatibleMode) -> ControlCenter.Mode.COMPATIBLE_MODE;
+                case String s when s.equals(rapidMode) -> ControlCenter.Mode.RAPID_MODE;
                 default -> ControlCenter.Mode.COMPATIBLE_MODE;
             };
         }
@@ -156,11 +156,17 @@ public class MainController {
         if (choiceBoxPosition.getValue() == null) {
             ControlCenter.floatingWindowPosition = OverlayCountdown.Corner.TOP_RIGHT;
         } else {
+            ResourceBundle bundle = ControlCenter.bundle;
+            String topRight = bundle.getString("main.floatingWindowTopRight");
+            String topLeft = bundle.getString("main.floatingWindowTopLeft");
+            String bottomRight = bundle.getString("main.floatingWindowBottomRight");
+            String bottomLeft = bundle.getString("main.floatingWindowBottomLeft");
+
             ControlCenter.floatingWindowPosition = switch (choiceBoxPosition.getValue()) {
-                case "悬浮窗右上" -> OverlayCountdown.Corner.TOP_RIGHT;
-                case "悬浮窗左上" -> OverlayCountdown.Corner.TOP_LEFT;
-                case "悬浮窗右下" -> OverlayCountdown.Corner.BOTTOM_RIGHT;
-                case "悬浮窗左下" -> OverlayCountdown.Corner.BOTTOM_LEFT;
+                case String s when s.equals(topRight) -> OverlayCountdown.Corner.TOP_RIGHT;
+                case String s when s.equals(topLeft) -> OverlayCountdown.Corner.TOP_LEFT;
+                case String s when s.equals(bottomRight) -> OverlayCountdown.Corner.BOTTOM_RIGHT;
+                case String s when s.equals(bottomLeft) -> OverlayCountdown.Corner.BOTTOM_LEFT;
                 default -> OverlayCountdown.Corner.TOP_RIGHT;
             };
         }
@@ -207,9 +213,10 @@ public class MainController {
         this.labelMillisecond.setText(bundle.getString("main.labelMillisecond"));
 
         // 更新选择框内容
+        ControlCenter.Mode mode = ControlCenter.mode;
         choiceBoxMode.getItems().clear();
         choiceBoxMode.getItems().addAll(bundle.getString("main.compatibleMode"), bundle.getString("main.rapidMode"));
-        choiceBoxMode.setValue(ControlCenter.mode == ControlCenter.Mode.COMPATIBLE_MODE ?
+        choiceBoxMode.setValue(mode == ControlCenter.Mode.COMPATIBLE_MODE ?
                 bundle.getString("main.compatibleMode") : bundle.getString("main.rapidMode"));
 
         choiceBoxPosition.getItems().clear();
@@ -232,8 +239,9 @@ public class MainController {
 
     // 重置状态
     private void resetStatus() {
-        this.buttonStart.setText("开始键入");
-        this.buttonClear.setText("清空");
+        ResourceBundle bundle = ControlCenter.bundle;
+        this.buttonStart.setText(bundle.getString("main.buttonStart"));
+        this.buttonClear.setText(bundle.getString("main.buttonClear"));
         ControlCenter.isCountdown = false;
         ControlCenter.isStartInput = false;
         ControlCenter.isPaused = false;
@@ -241,12 +249,14 @@ public class MainController {
 
     // 暂停
     private void pause() {
-        this.buttonStart.setText("继续");
-        this.buttonClear.setText("停止");
+        ResourceBundle bundle = ControlCenter.bundle;
+        this.buttonStart.setText(bundle.getString("main.buttonResume"));
+        this.buttonClear.setText(bundle.getString("main.buttonStop"));
     }
 
     // 继续
     private void resume() {
-        this.buttonStart.setText("暂停");
+        ResourceBundle bundle = ControlCenter.bundle;
+        this.buttonStart.setText(bundle.getString("main.buttonPause"));
     }
 }
