@@ -11,7 +11,7 @@ import com.zzhow.magickeyboard.core.IKeyboard;
  *
  * @author ZZHow
  * create 2025/10/13
- * update 2025/10/15
+ * update 2025/11/2
  */
 public class LinuxKeyboard implements IKeyboard {
 
@@ -32,8 +32,11 @@ public class LinuxKeyboard implements IKeyboard {
         }
 
         Pointer XOpenDisplay(String display);
+
         void XCloseDisplay(Pointer display);
+
         void XTestFakeKeyEvent(Pointer display, int keycode, boolean is_press, long delay);
+
         void XFlush(Pointer display);
     }
 
@@ -50,13 +53,16 @@ public class LinuxKeyboard implements IKeyboard {
         }
 
         Pointer XOpenDisplay(String display);
+
         void XCloseDisplay(Pointer display);
+
         void XFlush(Pointer display);
+
         long XKeysymToKeycode(Pointer display, long keysym);
     }
 
     @Override
-    public void sendText(String text) {
+    public void sendText(String text, ControlCenter.Mode mode) {
         // 重置状态
         isStopped = false;
         isPaused = false;
@@ -87,7 +93,7 @@ public class LinuxKeyboard implements IKeyboard {
 
                 char c = text.charAt(i);
 
-                // 处理特殊按键
+                // 处理特殊按键（两种模式都需要）
                 if (c == '\n') { // 回车键
                     sendSpecialKeyWithDisplay(display, 36); // Enter keycode
                     sleep();
@@ -104,7 +110,7 @@ public class LinuxKeyboard implements IKeyboard {
                     if (Character.isLowSurrogate(low)) {
                         int codePoint = Character.toCodePoint(c, low);
                         // 尝试发送,如果无法发送则跳过
-                        if (sendChar(display, codePoint)) {
+                        if (sendCharByMode(display, codePoint, mode)) {
                             sleep();
                         }
                         i++; // 跳过低位代理
@@ -112,8 +118,8 @@ public class LinuxKeyboard implements IKeyboard {
                     }
                 }
 
-                // 发送普通字符,如果无法发送则跳过
-                if (sendChar(display, c)) {
+                // 根据模式发送普通字符
+                if (sendCharByMode(display, c, mode)) {
                     sleep();
                 }
             }
@@ -121,6 +127,19 @@ public class LinuxKeyboard implements IKeyboard {
         } finally {
             Xlib.INSTANCE.XFlush(display);
             Xlib.INSTANCE.XCloseDisplay(display);
+        }
+    }
+
+    /**
+     * 根据模式发送字符
+     */
+    private boolean sendCharByMode(Pointer display, int codePoint, ControlCenter.Mode mode) {
+        if (mode == ControlCenter.Mode.RAPID_MODE) {
+            // 极速模式：使用 Unicode 方式
+            return sendCharUnicode(display, codePoint);
+        } else {
+            // 兼容模式：使用虚拟键码方式
+            return sendChar(display, codePoint);
         }
     }
 
@@ -155,14 +174,16 @@ public class LinuxKeyboard implements IKeyboard {
     }
 
     /**
-     * 发送字符,返回是否成功
+     * 兼容模式：发送字符（使用虚拟键码 + Shift）
      */
     private boolean sendChar(Pointer display, int codePoint) {
-        // 检查是否需要 Shift 键
-        boolean needsShift = needsShiftKey((char) codePoint);
+        char c = (char) codePoint;
 
-        // 将字符/码点转换为 X11 keysym
-        long keysym = charToKeysym(codePoint);
+        // 检查是否需要 Shift 键
+        boolean needsShift = needsShiftKey(c);
+
+        // 将字符转换为基础按键的 keysym (对于大写字母,转换为小写)
+        long keysym = charToKeysym(c, needsShift);
 
         if (keysym == 0) {
             // 静默跳过无法映射的字符(如中文)
@@ -180,6 +201,11 @@ public class LinuxKeyboard implements IKeyboard {
         // 如果需要 Shift，先按下 Shift 键
         if (needsShift) {
             X11.INSTANCE.XTestFakeKeyEvent(display, 50, true, 0); // Left Shift keycode = 50
+            try {
+                Thread.sleep(ControlCenter.timeInterval);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
         }
 
         // 发送按键按下和释放事件
@@ -188,8 +214,48 @@ public class LinuxKeyboard implements IKeyboard {
 
         // 如果按下了 Shift，释放 Shift 键
         if (needsShift) {
+            try {
+                Thread.sleep(ControlCenter.timeInterval);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
             X11.INSTANCE.XTestFakeKeyEvent(display, 50, false, 0); // Release Shift
         }
+
+        X11.INSTANCE.XFlush(display);
+        return true;
+    }
+
+    /**
+     * 极速模式：使用 Unicode 方式发送字符
+     */
+    private boolean sendCharUnicode(Pointer display, int codePoint) {
+        char c = (char) codePoint;
+
+        // 直接使用 Unicode keysym (0x01000000 + 码点)
+        long keysym;
+        if (c <= 0x7E) {
+            // ASCII 字符直接使用
+            keysym = c;
+        } else if (c >= 0x00A0 && c <= 0x00FF) {
+            // Latin-1 补充字符
+            keysym = c;
+        } else {
+            // Unicode 字符使用 0x01000000 + 码点
+            keysym = 0x01000000L + c;
+        }
+
+        // 将 keysym 转换为 keycode
+        long keycode = Xlib.INSTANCE.XKeysymToKeycode(display, keysym);
+
+        if (keycode == 0) {
+            // 静默跳过无法找到keycode的字符
+            return false;
+        }
+
+        // 发送按键按下和释放事件（不使用 Shift）
+        X11.INSTANCE.XTestFakeKeyEvent(display, (int) keycode, true, 0);
+        X11.INSTANCE.XTestFakeKeyEvent(display, (int) keycode, false, 0);
 
         X11.INSTANCE.XFlush(display);
         return true;
@@ -204,34 +270,120 @@ public class LinuxKeyboard implements IKeyboard {
             return true;
         }
 
+        // 小写字母不需要 Shift
+        if (c >= 'a' && c <= 'z') {
+            return false;
+        }
+
+        // 数字不需要 Shift
+        if (c >= '0' && c <= '9') {
+            return false;
+        }
+
         // 需要 Shift 的符号（美式键盘布局）
         String shiftSymbols = "!@#$%^&*()_+{}|:\"<>?~";
-        return shiftSymbols.indexOf(c) != -1;
+        if (shiftSymbols.indexOf(c) != -1) {
+            return true;
+        }
+
+        // 不需要 Shift 的符号
+        String noShiftSymbols = "`-=[]\\;',./";
+        if (noShiftSymbols.indexOf(c) != -1) {
+            return false;
+        }
+
+        // 空格不需要 Shift
+        if (c == ' ') {
+            return false;
+        }
+
+        // 其他字符默认不需要 Shift
+        return false;
     }
 
     /**
-     * 将字符/码点转换为 X11 keysym
-     * <p>
-     * X11 keysym 映射规则:
-     * - ASCII (0x20-0x7E): 直接映射
-     * - Latin-1 (0xA0-0xFF): 直接映射
-     * - Unicode (0x100-0x10FFFF): 0x01000000 + 码点
+     * 将字符转换为 X11 keysym
+     * 注意: 对于需要Shift的字符(如大写字母),返回的是基础按键的keysym(小写字母)
+     *
+     * @param c          字符
+     * @param needsShift 是否需要Shift键
+     * @return X11 keysym
      */
-    private long charToKeysym(int codePoint) {
-        // ASCII 可打印字符 (空格到波浪号)
-        if (codePoint >= 0x20 && codePoint <= 0x7E) {
-            return codePoint;
+    private long charToKeysym(char c, boolean needsShift) {
+        // 大写字母: 返回对应小写字母的keysym
+        if (c >= 'A' && c <= 'Z') {
+            return Character.toLowerCase(c);
+        }
+
+        // 小写字母: 直接返回
+        if (c >= 'a' && c <= 'z') {
+            return c;
+        }
+
+        // 数字键: 直接返回 (0-9对应的keysym就是ASCII码)
+        if (c >= '0' && c <= '9') {
+            return c;
+        }
+
+        // 需要Shift的符号: 返回基础按键的keysym
+        switch (c) {
+            case '!':
+                return '1';
+            case '@':
+                return '2';
+            case '#':
+                return '3';
+            case '$':
+                return '4';
+            case '%':
+                return '5';
+            case '^':
+                return '6';
+            case '&':
+                return '7';
+            case '*':
+                return '8';
+            case '(':
+                return '9';
+            case ')':
+                return '0';
+            case '_':
+                return '-';
+            case '+':
+                return '=';
+            case '{':
+                return '[';
+            case '}':
+                return ']';
+            case '|':
+                return '\\';
+            case ':':
+                return ';';
+            case '"':
+                return '\'';
+            case '<':
+                return ',';
+            case '>':
+                return '.';
+            case '?':
+                return '/';
+            case '~':
+                return '`';
+        }
+
+        // 不需要Shift的符号: 直接返回
+        if ((c >= 0x20 && c <= 0x7E)) {
+            return c;
         }
 
         // Latin-1 补充字符
-        if (codePoint >= 0x00A0 && codePoint <= 0x00FF) {
-            return codePoint;
+        if (c >= 0x00A0 && c <= 0x00FF) {
+            return c;
         }
 
         // Unicode 字符使用 0x01000000 + 码点
-        // 这是 X11 标准的 Unicode keysym 表示方法
-        if (codePoint >= 0x0100 && codePoint <= 0x10FFFF) {
-            return 0x01000000L + codePoint;
+        if (c >= 0x0100 && c <= 0xFFFF) {
+            return 0x01000000L + c;
         }
 
         // 无法映射的字符,返回0表示跳过

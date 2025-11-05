@@ -5,15 +5,16 @@ package com.zzhow.magickeyboard.core;
  *
  * @author ZZHow
  * create 2025/10/13
- * update 2025/10/14
+ * update 2025/11/2
  */
 public interface IKeyboard {
     /**
      * 根据传入的字符串开始键盘输入
      *
      * @param text 待键入的字符串
+     * @param mode 键入模式
      */
-    void sendText(String text);
+    void sendText(String text, ControlCenter.Mode mode);
 
     /**
      * 停止键盘输入

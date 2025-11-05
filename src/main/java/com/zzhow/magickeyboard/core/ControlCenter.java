@@ -3,16 +3,19 @@ package com.zzhow.magickeyboard.core;
 import com.zzhow.magickeyboard.util.OverlayCountdown;
 import javafx.scene.paint.Color;
 
+import java.util.Locale;
+import java.util.ResourceBundle;
+
 /**
  * 控制中心类
  *
  * @author ZZHow
  * create 2025/10/14
- * update 2025/10/14
+ * update 2025/11/3
  */
 public class ControlCenter {
     public static OverlayCountdown.Corner floatingWindowPosition = OverlayCountdown.Corner.BOTTOM_RIGHT; // 悬浮窗位置
-    public static long timeInterval = 10L; // 键入间隔时间(ms)
+    public static long timeInterval = 35L; // 键入间隔时间(ms)
     public static boolean isCountdown = false; // 是否开始倒计时
     public static boolean isStartInput = false; // 是否开始键入
     public static boolean isPaused = false; // 是否暂停
@@ -20,6 +23,18 @@ public class ControlCenter {
     public static Runnable onPaused;
     public static Runnable onResume;
     public static Runnable onResetStatus;
+
+    public static Mode mode = Mode.COMPATIBLE_MODE; // 键入模式
+    public static boolean isIgnoreLeadingWhitespace = false; // 是否忽略每行行首的空字符
+
+    // 多语言
+    public static ResourceBundle bundle = ResourceBundle.getBundle("MessagesBundle", Locale.of("zh", "HANS"));
+    private static String language = "zh_HANS";
+
+    public enum Mode {
+        COMPATIBLE_MODE, // 兼容模式
+        RAPID_MODE       // 极速模式
+    }
 
     public static void stop() {
         if (ControlCenter.isCountdown && !ControlCenter.isStartInput) {
@@ -62,5 +77,14 @@ public class ControlCenter {
                 onPaused.run();
             }
         }
+    }
+
+    public static String getLanguage() {
+        return language;
+    }
+
+    public static void setLanguage(String language) {
+        ControlCenter.language = language;
+        bundle = ResourceBundle.getBundle("MessagesBundle", Locale.of(language.split("_")[0], language.split("_")[1]));
     }
 }

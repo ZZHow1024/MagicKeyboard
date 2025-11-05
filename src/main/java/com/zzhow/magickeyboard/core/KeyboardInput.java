@@ -9,7 +9,7 @@ import com.zzhow.magickeyboard.core.impl.WindowsKeyboard;
  *
  * @author ZZHow
  * create 2025/10/13
- * update 2025/10/14
+ * update 2025/11/3
  */
 
 public class KeyboardInput {
@@ -32,8 +32,29 @@ public class KeyboardInput {
     /**
      * 根据传入的字符串开始键盘输入
      */
+    public static void sendText(String text, ControlCenter.Mode mode) {
+        if (ControlCenter.isIgnoreLeadingWhitespace) {
+            // 忽略每行行首的空字符
+            String[] lines = text.split("\n", -1); // 保留末尾空行
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < lines.length; i++) {
+                String line = lines[i];
+                // 使用正则表达式移除行首的所有空格和Tab
+                sb.append(line.replaceFirst("^[ \t]*", ""));
+                if (i < lines.length - 1) {
+                    sb.append("\n");
+                }
+            }
+            text = sb.toString();
+        }
+        keyboardImpl.sendText(text, mode);
+    }
+
+    /**
+     * 根据传入的字符串开始键盘输入（默认使用兼容模式）
+     */
     public static void sendText(String text) {
-        keyboardImpl.sendText(text);
+        keyboardImpl.sendText(text, ControlCenter.Mode.COMPATIBLE_MODE);
     }
 
     /**

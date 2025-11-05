@@ -5,8 +5,8 @@
   <h1>MagicKeyboard</h1>
 </div>
 <div align="center" style="line-height: 1;">
-  <a href="https://github.com/ZZHow1024/MagicKeyboard/releases"><img alt="MagicKeyboard1.0.0"
-    src="https://img.shields.io/badge/MagicKeyboard-v1.0.0-blue"/>
+  <a href="https://github.com/ZZHow1024/MagicKeyboard/releases"><img alt="MagicKeyboard2.0.0"
+    src="https://img.shields.io/badge/MagicKeyboard-v2.0.0-blue"/>
   </a>
   <a href="LICENSE"><img alt="Code License"
     src="https://img.shields.io/github/license/ZZHow1024/MagicKeyboard">
@@ -73,11 +73,36 @@ https://github.com/ZZHow1024/MagicKeyboard/releases
 - Linux 和 macOS 需要执行安装操作后再运行，Windows 可直接运行 .zip 压缩包中的 .exe 可执行程序或选择 .exe 安装包与 .msi 安装包执行安装操作，.jar 包可直接通过 `java -jar` 命令运行。
 - 启动 **MagicKeyboard**。
 - 将待键入的内容输入或粘贴到文本框内。
+- 切换键入模式（兼容模式/极速模式）。
 - 调节键入时间间隔与悬浮窗位置。
+- 选择是否启用代码模式（忽略行首空格符）。
 - 按下 “开始键入” 按钮将进入 3s 倒计时，倒计时结束后开始模拟键盘键入文本。
     - 此时，“开始键入” 按钮的功能将变为 ”暂停“/”继续“，”清空“按钮的功能将变为 “停止”。
 - 按下 “关于” 按钮可查看简介。
-- 按下 “退出” 按钮可退出程序。
+- 右下方可以选择语言。
+    - 当前支持中文（简体/繁体）与英文。
+
+---
+
+## 模式说明
+
+**MagicKeyboard** 提供了两种键盘输入模式，分别是 **兼容模式** 和 **极速模式**，以满足不同场景下的需求。
+
+1. **兼容模式**
+    - 特点：兼容性优先，适用于大多数操作系统和应用场景。
+    - 适用场景：
+        - 需要确保输入的稳定性和准确性。
+        - 适用于对输入速度要求不高但需要兼容性的场景。
+    - 实现细节：在此模式下，**MagicKeyboard** 会以较为保守的方式模拟键盘输入，确保在不同应用程序中都能正常工作。
+2. **极速模式**
+    - 特点：速度优先，适用于对输入效率要求较高的场景。
+    - 适用场景：
+        - 大量文本输入或需要快速响应的场景。
+        - 对兼容性要求较低但追求极致输入速度的场景。
+    - 实现细节：在此模式下，**MagicKeyboard** 会以更高效的方式模拟键盘输入，可能会牺牲部分兼容性以换取更快的输入速度。
+- 用户可以根据需求选择不同的模式进行键盘输入
+    - 默认模式为 **兼容模式**。
+    - 用户可在开始键入前切换键入模式（兼容模式/极速模式）。
 
 ---
 
@@ -85,7 +110,7 @@ https://github.com/ZZHow1024/MagicKeyboard/releases
 
 ### 当前版本
 
-- **MagicKeyboard 版本号**: 1.0.0
+- **MagicKeyboard 版本号**: 2.0.0
 - **Java 版本**: 21+
 - **JavaFX 版本**: 21
 - **Maven 版本**: 3.6+
@@ -124,7 +149,7 @@ https://github.com/ZZHow1024/MagicKeyboard/releases
 - 克隆项目
 
     ```bash
-    git clone <https://github.com/ZZHow1024/MagicKeyboard.git>
+    git clone https://github.com/ZZHow1024/MagicKeyboard.git
     ```
 
 - 进入项目目录
@@ -156,6 +181,12 @@ https://github.com/ZZHow1024/MagicKeyboard/releases
     - 悬浮窗提示。
         - 支持调节悬浮窗位置
         - 支持悬浮窗控制键入状态
+- MagicKeyboard2.0.0
+    - 切换键入模式（兼容模式/极速模式）。
+    - 代码模式（忽略行首空格符）。
+    - 支持多语言。
+        - 中文（简体/繁体）
+        - 英文
 
 ---
 
@@ -166,6 +197,12 @@ https://github.com/ZZHow1024/MagicKeyboard/releases
 ![MagicKeyboard1.0.0](https://www.notion.so/image/attachment%3A8a91fbce-ecd8-48c8-8dac-b8338679a882%3AMagicKeyboard1.0.0.png?table=block&id=28de64bd-e40f-8096-b15b-dd13f5664ebe&t=28de64bd-e40f-8096-b15b-dd13f5664ebe)
 
 MagicKeyboard1.0.0
+
+### MagicKeyboard2.0.0
+
+![MagicKeyboard2.0.0](https://www.notion.so/image/attachment%3Ad5c813db-665f-47ee-91a8-6e5b5dfbfa87%3AMagicKeyboard2.0.0.png?table=block&id=2a1e64bd-e40f-8080-a255-cf85435b60b3&t=2a1e64bd-e40f-8080-a255-cf85435b60b3)
+
+MagicKeyboard2.0.0
 
 ---
 
