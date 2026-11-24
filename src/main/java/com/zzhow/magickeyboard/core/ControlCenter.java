@@ -11,7 +11,7 @@ import java.util.ResourceBundle;
  *
  * @author ZZHow
  * create 2025/10/14
- * update 2025/11/3
+ * update 2026/11/23
  */
 public class ControlCenter {
     public static OverlayCountdown.Corner floatingWindowPosition = OverlayCountdown.Corner.BOTTOM_RIGHT; // 悬浮窗位置
@@ -40,7 +40,9 @@ public class ControlCenter {
         if (ControlCenter.isCountdown && !ControlCenter.isStartInput) {
             // 正在倒计时，还未开始键入
             OverlayCountdown.stop();
-            ControlCenter.onResetStatus.run();
+            if (ControlCenter.onResetStatus != null) {
+                ControlCenter.onResetStatus.run();
+            }
         } else if (ControlCenter.isCountdown) {
             // 倒计时结束，开始键入
             KeyboardInput.stop();
@@ -54,12 +56,16 @@ public class ControlCenter {
                 // 已暂停
                 OverlayCountdown.resume();
                 ControlCenter.isPaused = false;
-                onResume.run();
+                if (ControlCenter.onResume != null) {
+                    ControlCenter.onResume.run();
+                }
             } else {
                 // 未暂停
                 OverlayCountdown.pause();
                 ControlCenter.isPaused = true;
-                onPaused.run();
+                if (ControlCenter.onPaused != null) {
+                    ControlCenter.onPaused.run();
+                }
             }
         } else if (ControlCenter.isStartInput) {
             // 倒计时结束，开始键入
@@ -68,13 +74,17 @@ public class ControlCenter {
                 OverlayCountdown.stop();
                 OverlayCountdown.show(3, 0.5, Color.BLACK, 80, ControlCenter.floatingWindowPosition, KeyboardInput::resume);
                 ControlCenter.isPaused = false;
-                onResume.run();
+                if (ControlCenter.onResume != null) {
+                    ControlCenter.onResume.run();
+                }
             } else {
                 // 未暂停
                 OverlayCountdown.pause();
                 KeyboardInput.pause();
                 ControlCenter.isPaused = true;
-                onPaused.run();
+                if (ControlCenter.onPaused != null) {
+                    ControlCenter.onPaused.run();
+                }
             }
         }
     }

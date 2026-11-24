@@ -1,144 +1,47 @@
 package com.zzhow.magickeyboard.core.impl;
 
-import com.sun.jna.*;
-import com.sun.jna.platform.win32.WinDef;
-import com.sun.jna.win32.W32APIOptions;
-import com.zzhow.magickeyboard.core.ControlCenter;
-import com.zzhow.magickeyboard.core.IKeyboard;
-
-import java.util.Arrays;
-import java.util.List;
-
 import com.sun.jna.Library;
 import com.sun.jna.Native;
-import com.sun.jna.Pointer;
-import com.sun.jna.Structure;
-import com.sun.jna.Union;
+import com.sun.jna.platform.win32.WinDef;
+import com.sun.jna.platform.win32.WinUser;
+import com.sun.jna.win32.W32APIOptions;
+import com.zzhow.magickeyboard.core.ControlCenter;
 
 import java.util.HashMap;
 import java.util.Map;
 
 /**
  * 模拟键盘输入-Windows 实现类
+ * <p>
+ * 兼容模式：虚拟键码 + Shift 组合键；极速模式：KEYEVENTF_UNICODE 事件。
  *
  * @author ZZHow
  * create 2025/10/13
- * update 2025/11/2
+ * update 2026/11/23
  */
-public class WindowsKeyboard implements IKeyboard {
+public class WindowsKeyboard extends AbstractKeyboard {
 
-    private volatile boolean isStopped = false;
-    private volatile boolean isPaused = false;
-    private final Object pauseLock = new Object();
+    // Windows 虚拟键码（WinUser 未定义的部分）
+    private static final int VK_RETURN = 0x0D;
+    private static final int VK_TAB = 0x09;
+    private static final int VK_SHIFT = WinUser.VK_SHIFT;
 
-    public interface User32 extends Library {
+    private interface User32 extends Library {
         User32 INSTANCE = Native.load("user32", User32.class, W32APIOptions.DEFAULT_OPTIONS);
 
-        int INPUT_KEYBOARD = 1;
-        int INPUT_MOUSE = 0;
-        int INPUT_HARDWARE = 2;
-
-        // 按键事件标志
-        int KEYEVENTF_KEYUP = 0x0002;
-        int KEYEVENTF_UNICODE = 0x0004;
-        int KEYEVENTF_SCANCODE = 0x0008;
-
-        // 虚拟键码
-        int VK_SHIFT = 0x10;
-        int VK_RETURN = 0x0D;
-        int VK_TAB = 0x09;
-
-        class INPUT extends Structure {
-            public int type;
-            public INPUT_UNION input;
-
-            public INPUT() {
-                super();
-            }
-
-            @Override
-            protected List<String> getFieldOrder() {
-                return Arrays.asList("type", "input");
-            }
-
-            public static class INPUT_UNION extends Union {
-                public MOUSEINPUT mi;
-                public KEYBDINPUT ki;
-                public HARDWAREINPUT hi;
-
-                public INPUT_UNION() {
-                    super();
-                }
-            }
-        }
-
-        class MOUSEINPUT extends Structure {
-            public WinDef.LONG dx;
-            public WinDef.LONG dy;
-            public WinDef.DWORD mouseData;
-            public WinDef.DWORD dwFlags;
-            public WinDef.DWORD time;
-            public Pointer dwExtraInfo;
-
-            @Override
-            protected List<String> getFieldOrder() {
-                return Arrays.asList("dx", "dy", "mouseData", "dwFlags", "time", "dwExtraInfo");
-            }
-        }
-
-        class KEYBDINPUT extends Structure {
-            public WinDef.WORD wVk;
-            public WinDef.WORD wScan;
-            public WinDef.DWORD dwFlags;
-            public WinDef.DWORD time;
-            public Pointer dwExtraInfo;
-
-            @Override
-            protected List<String> getFieldOrder() {
-                return Arrays.asList("wVk", "wScan", "dwFlags", "time", "dwExtraInfo");
-            }
-        }
-
-        class HARDWAREINPUT extends Structure {
-            public WinDef.DWORD uMsg;
-            public WinDef.WORD wParamL;
-            public WinDef.WORD wParamH;
-
-            @Override
-            protected List<String> getFieldOrder() {
-                return Arrays.asList("uMsg", "wParamL", "wParamH");
-            }
-        }
-
-        int SendInput(int nInputs, INPUT[] pInputs, int cbSize);
+        int SendInput(int nInputs, WinUser.INPUT[] pInputs, int cbSize);
     }
 
-    // Windows 虚拟键码映射
-    private static final Map<Character, Integer> KEY_MAP = new HashMap<>();
-    private static final Map<Character, Boolean> NEEDS_SHIFT = new HashMap<>();
+    // Windows 虚拟键码映射（包级私有，便于单元测试）
+    static final Map<Character, Integer> KEY_MAP = new HashMap<>();
+    static final Map<Character, Boolean> NEEDS_SHIFT = new HashMap<>();
 
     static {
         // 数字键
-        KEY_MAP.put('0', 0x30);
-        NEEDS_SHIFT.put('0', false);
-        KEY_MAP.put('1', 0x31);
-        NEEDS_SHIFT.put('1', false);
-        KEY_MAP.put('2', 0x32);
-        NEEDS_SHIFT.put('2', false);
-        KEY_MAP.put('3', 0x33);
-        NEEDS_SHIFT.put('3', false);
-        KEY_MAP.put('4', 0x34);
-        NEEDS_SHIFT.put('4', false);
-        KEY_MAP.put('5', 0x35);
-        NEEDS_SHIFT.put('5', false);
-        KEY_MAP.put('6', 0x36);
-        NEEDS_SHIFT.put('6', false);
-        KEY_MAP.put('7', 0x37);
-        NEEDS_SHIFT.put('7', false);
-        KEY_MAP.put('8', 0x38);
-        NEEDS_SHIFT.put('8', false);
-        KEY_MAP.put('9', 0x39);
-        NEEDS_SHIFT.put('9', false);
+        for (char c = '0'; c <= '9'; c++) {
+            KEY_MAP.put(c, 0x30 + (c - '0'));
+            NEEDS_SHIFT.put(c, false);
+        }
 
         // 数字键的Shift符号
         KEY_MAP.put(')', 0x30);
@@ -218,81 +121,35 @@ public class WindowsKeyboard implements IKeyboard {
     }
 
     @Override
-    public void sendText(String text, ControlCenter.Mode mode) {
-        isStopped = false;
-        isPaused = false;
+    protected void sendNewLine() {
+        sendVirtualKey(VK_RETURN, false);
+        sendVirtualKey(VK_RETURN, true);
+    }
 
-        for (int i = 0; i < text.length(); i++) {
-            if (isStopped) {
-                break;
-            }
+    @Override
+    protected void sendTab() {
+        sendVirtualKey(VK_TAB, false);
+        sendVirtualKey(VK_TAB, true);
+    }
 
-            while (isPaused) {
-                synchronized (pauseLock) {
-                    try {
-                        pauseLock.wait();
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                        return;
-                    }
-                }
-                if (isStopped) {
-                    break;
-                }
-            }
-
-            if (isStopped) {
-                break;
-            }
-
-            char c = text.charAt(i);
-
-            // 处理特殊按键（两种模式都需要）
-            if (c == '\n') {
-                sendSpecialKey(User32.VK_RETURN);
-                continue;
-            } else if (c == '\t') {
-                sendSpecialKey(User32.VK_TAB);
-                continue;
-            }
-
-            // 根据模式选择发送方式
-            if (mode == ControlCenter.Mode.RAPID_MODE) {
-                // 极速模式：所有字符都使用Unicode方式
-                // 处理代理对（Surrogate Pairs）
-                if (Character.isHighSurrogate(c) && i + 1 < text.length()) {
-                    char low = text.charAt(i + 1);
-                    if (Character.isLowSurrogate(low)) {
-                        sendUnicodeChar(c);
-                        sendUnicodeChar(low);
-                        i++;
-                        continue;
-                    }
-                }
-                sendUnicodeChar(c);
-            } else {
-                // 兼容模式：使用原有的虚拟键码方式
-                // 处理代理对（Surrogate Pairs）
-                if (Character.isHighSurrogate(c) && i + 1 < text.length()) {
-                    char low = text.charAt(i + 1);
-                    if (Character.isLowSurrogate(low)) {
-                        sendUnicodeChar(c);
-                        sendUnicodeChar(low);
-                        i++;
-                        continue;
-                    }
-                }
-                sendChar(c);
-            }
-
-            try {
-                Thread.sleep(ControlCenter.timeInterval);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                break;
-            }
+    @Override
+    protected void sendCodePoint(int codePoint, ControlCenter.Mode mode) {
+        if (Character.isSupplementaryCodePoint(codePoint)) {
+            // Windows 的 KEYEVENTF_UNICODE 按 UTF-16 编码单元发送，补充字符需拆成高、低位代理两次事件
+            char[] units = Character.toChars(codePoint);
+            sendUnicodeChar(units[0]);
+            sendUnicodeChar(units[1]);
+            return;
         }
-        isStopped = true;
+
+        char c = (char) codePoint;
+        if (mode == ControlCenter.Mode.RAPID_MODE) {
+            // 极速模式：所有字符都使用Unicode方式
+            sendUnicodeChar(c);
+        } else {
+            // 兼容模式：使用虚拟键码方式
+            sendChar(c);
+        }
     }
 
     private void sendChar(char c) {
@@ -304,17 +161,13 @@ public class WindowsKeyboard implements IKeyboard {
             return;
         }
 
-        boolean needsShift = Character.isUpperCase(c) ||
-                (NEEDS_SHIFT.containsKey(c) && NEEDS_SHIFT.get(c));
+        boolean needsShift = Character.isUpperCase(c)
+                || Boolean.TRUE.equals(NEEDS_SHIFT.get(c));
 
         if (needsShift) {
             // 按下Shift
-            sendVirtualKey(User32.VK_SHIFT, false);
-            try {
-                Thread.sleep(ControlCenter.timeInterval);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
+            sendVirtualKey(VK_SHIFT, false);
+            sleepInterval();
         }
 
         // 按下按键
@@ -323,13 +176,9 @@ public class WindowsKeyboard implements IKeyboard {
         sendVirtualKey(virtualKey, true);
 
         if (needsShift) {
-            try {
-                Thread.sleep(ControlCenter.timeInterval);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
+            sleepInterval();
             // 释放Shift
-            sendVirtualKey(User32.VK_SHIFT, true);
+            sendVirtualKey(VK_SHIFT, true);
         }
     }
 
@@ -339,81 +188,41 @@ public class WindowsKeyboard implements IKeyboard {
     }
 
     private void sendUnicodeKey(char c, boolean keyUp) {
-        User32.INPUT input = new User32.INPUT();
-        input.type = User32.INPUT_KEYBOARD;
-        input.input = new User32.INPUT.INPUT_UNION();
-        input.input.ki = new User32.KEYBDINPUT();
+        WinUser.INPUT input = new WinUser.INPUT();
+        input.type = new WinDef.DWORD(WinUser.INPUT.INPUT_KEYBOARD);
+        input.input = new WinUser.INPUT.INPUT_UNION();
+        input.input.ki = new WinUser.KEYBDINPUT();
+
+        int flags = WinUser.KEYBDINPUT.KEYEVENTF_UNICODE;
+        if (keyUp) {
+            flags |= WinUser.KEYBDINPUT.KEYEVENTF_KEYUP;
+        }
 
         input.input.ki.wVk = new WinDef.WORD(0);
         input.input.ki.wScan = new WinDef.WORD(c);
+        input.input.ki.dwFlags = new WinDef.DWORD(flags);
         input.input.ki.time = new WinDef.DWORD(0);
         input.input.ki.dwExtraInfo = null;
-
-        int flags = User32.KEYEVENTF_UNICODE;
-        if (keyUp) {
-            flags |= User32.KEYEVENTF_KEYUP;
-        }
-        input.input.ki.dwFlags = new WinDef.DWORD(flags);
-
-        input.input.setType(User32.KEYBDINPUT.class);
+        input.input.setType(WinUser.KEYBDINPUT.class);
         input.write();
 
-        User32.INSTANCE.SendInput(1, new User32.INPUT[]{input}, input.size());
-    }
-
-    private void sendSpecialKey(int virtualKeyCode) {
-        sendVirtualKey(virtualKeyCode, false);
-        sendVirtualKey(virtualKeyCode, true);
+        User32.INSTANCE.SendInput(1, new WinUser.INPUT[]{input}, input.size());
     }
 
     private void sendVirtualKey(int vk, boolean keyUp) {
-        User32.INPUT input = new User32.INPUT();
-        input.type = User32.INPUT_KEYBOARD;
-        input.input = new User32.INPUT.INPUT_UNION();
-        input.input.ki = new User32.KEYBDINPUT();
+        WinUser.INPUT input = new WinUser.INPUT();
+        input.type = new WinDef.DWORD(WinUser.INPUT.INPUT_KEYBOARD);
+        input.input = new WinUser.INPUT.INPUT_UNION();
+        input.input.ki = new WinUser.KEYBDINPUT();
 
         input.input.ki.wVk = new WinDef.WORD(vk);
         input.input.ki.wScan = new WinDef.WORD(0);
+        input.input.ki.dwFlags = new WinDef.DWORD(keyUp ? WinUser.KEYBDINPUT.KEYEVENTF_KEYUP : 0);
         input.input.ki.time = new WinDef.DWORD(0);
         input.input.ki.dwExtraInfo = null;
-        input.input.ki.dwFlags = new WinDef.DWORD(keyUp ? User32.KEYEVENTF_KEYUP : 0);
-
-        input.input.setType(User32.KEYBDINPUT.class);
+        input.input.setType(WinUser.KEYBDINPUT.class);
         input.write();
 
-        User32.INSTANCE.SendInput(1, new User32.INPUT[]{input}, input.size());
-    }
-
-    @Override
-    public void stop() {
-        isStopped = true;
-        isPaused = false;
-        synchronized (pauseLock) {
-            pauseLock.notifyAll();
-        }
-    }
-
-    @Override
-    public void pause() {
-        isPaused = true;
-    }
-
-    @Override
-    public void resume() {
-        isPaused = false;
-        synchronized (pauseLock) {
-            pauseLock.notifyAll();
-        }
-
-        while (!isStopped) {
-            synchronized (pauseLock) {
-                try {
-                    pauseLock.wait(300);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    break;
-                }
-            }
-        }
+        User32.INSTANCE.SendInput(1, new WinUser.INPUT[]{input}, input.size());
     }
 }

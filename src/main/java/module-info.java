@@ -1,17 +1,16 @@
 module com.zzhow.magickeyboard {
     requires javafx.controls;
     requires javafx.fxml;
+    requires javafx.base;
     requires com.sun.jna;
     requires com.sun.jna.platform;
-    requires javafx.base;
+    requires java.logging;
 
+    // JavaFX LauncherImpl 通过反射构造 Application 子类，需要定向导出
+    exports com.zzhow.magickeyboard to javafx.graphics;
+    exports com.zzhow.magickeyboard.window to javafx.graphics;
 
     opens com.zzhow.magickeyboard to javafx.fxml;
-    exports com.zzhow.magickeyboard;
-    exports com.zzhow.magickeyboard.controller;
     opens com.zzhow.magickeyboard.controller to javafx.fxml;
-    exports com.zzhow.magickeyboard.window;
     opens com.zzhow.magickeyboard.window to javafx.fxml;
-    exports com.zzhow.magickeyboard.core.impl;
-    exports com.zzhow.magickeyboard.core;
 }

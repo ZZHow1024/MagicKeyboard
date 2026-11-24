@@ -1,29 +1,39 @@
 package com.zzhow.magickeyboard.util;
 
-import javafx.animation.*;
+import com.zzhow.magickeyboard.core.ControlCenter;
+import javafx.animation.Animation;
+import javafx.animation.FadeTransition;
+import javafx.animation.Interpolator;
+import javafx.animation.KeyFrame;
+import javafx.animation.KeyValue;
+import javafx.animation.Timeline;
 import javafx.application.Platform;
+import javafx.geometry.Pos;
 import javafx.geometry.Rectangle2D;
 import javafx.scene.Scene;
-import javafx.scene.control.Label;
 import javafx.scene.control.Button;
+import javafx.scene.control.Label;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
+import javafx.scene.text.Font;
 import javafx.stage.Screen;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 import javafx.util.Duration;
-import javafx.geometry.Pos;
-import javafx.scene.layout.VBox;
 
 import java.util.ResourceBundle;
 
 /**
  * 透明倒计时蒙层工具类
+ * <p>
+ * 多语言文案统一取自 {@link ControlCenter#bundle}，
+ * 调用方切换语言时应先更新 ControlCenter 再调用 {@link #setLanguage(String)}。
  *
  * @author ZZHow
  * create 2025/10/13
- * update 2025/11/3
+ * update 2026/11/23
  */
 public class OverlayCountdown {
     private static Timeline currentTimeline;
@@ -33,8 +43,6 @@ public class OverlayCountdown {
     private static double remainingSeconds = 0;
     private static FadeTransition currentFadeOut;
     private static Label currentCountdownLabel;
-    private static ResourceBundle bundle;
-    private static String currentLanguage = "zh_HANS";
 
     public enum Corner {
         TOP_LEFT, TOP_RIGHT, BOTTOM_LEFT, BOTTOM_RIGHT
@@ -59,8 +67,7 @@ public class OverlayCountdown {
             isPaused = false;
             remainingSeconds = seconds;
 
-            // 加载语言资源
-            bundle = ResourceBundle.getBundle("MessagesBundle_" + currentLanguage);
+            ResourceBundle bundle = ControlCenter.bundle;
 
             Stage overlayStage = new Stage();
             overlayStage.initStyle(StageStyle.TRANSPARENT);
@@ -70,22 +77,18 @@ public class OverlayCountdown {
             Label countdownLabel = new Label(String.valueOf(seconds));
             countdownLabel.setTextFill(Color.WHITE);
             countdownLabel.setStyle("-fx-font-weight: bold;");
-            countdownLabel.setFont(javafx.scene.text.Font.font(fontSize));
+            countdownLabel.setFont(Font.font(fontSize));
 
             // 保存当前倒计时标签引用
             currentCountdownLabel = countdownLabel;
 
             // 标题文字
-            Label titleLabel = null;
-            VBox vbox = new VBox(5); // 倒计时与标题间距 5px
-            vbox.setAlignment(Pos.CENTER);
-
             String titleText = "MagicKeyboard";
             int titleFontSize = 20;
-            titleLabel = new Label(titleText);
+            Label titleLabel = new Label(titleText);
             titleLabel.setTextFill(Color.WHITE);
             titleLabel.setStyle("-fx-font-weight: bold; -fx-wrap-text: true; -fx-text-alignment: center;");
-            titleLabel.setFont(javafx.scene.text.Font.font(20));
+            titleLabel.setFont(Font.font(titleFontSize));
             titleLabel.setMaxWidth(Double.MAX_VALUE); // 允许宽度自适应
             titleLabel.setAlignment(Pos.CENTER); // 文本居中对齐
 
@@ -101,20 +104,16 @@ public class OverlayCountdown {
             stopButton.setStyle("-fx-font-size: 16px; -fx-padding: 8px 12px; -fx-min-width: 40px;");
 
             // 设置按钮点击事件
-            pauseResumeButton.setOnAction(e -> {
-                com.zzhow.magickeyboard.core.ControlCenter.resumeOrPause();
-            });
-
-            stopButton.setOnAction(e -> {
-                com.zzhow.magickeyboard.core.ControlCenter.stop();
-            });
+            pauseResumeButton.setOnAction(e -> ControlCenter.resumeOrPause());
+            stopButton.setOnAction(e -> ControlCenter.stop());
 
             // 创建水平按钮容器
             HBox buttonBox = new HBox(10);
             buttonBox.setAlignment(Pos.CENTER);
             buttonBox.getChildren().addAll(pauseResumeButton, stopButton);
 
-            vbox.getChildren().addAll(titleLabel, countdownLabel, buttonBox);
+            VBox vbox = new VBox(5, titleLabel, countdownLabel, buttonBox); // 倒计时与标题间距 5px
+            vbox.setAlignment(Pos.CENTER);
 
             StackPane root = new StackPane(vbox);
 
@@ -224,8 +223,8 @@ public class OverlayCountdown {
 
                             // 倒计时结束时执行回调
                             if (remaining == 0 && onFinish != null) {
-                                // 在新线程中执行回调
-                                new Thread(() -> {
+                                // 在守护线程中执行回调，避免阻塞 JVM 退出
+                                Thread worker = new Thread(() -> {
                                     try {
                                         onFinish.run();
                                     } finally {
@@ -237,7 +236,9 @@ public class OverlayCountdown {
                                             }
                                         });
                                     }
-                                }).start();
+                                }, "magic-keyboard-input");
+                                worker.setDaemon(true);
+                                worker.start();
                             }
                         }
                 ));
@@ -273,27 +274,20 @@ public class OverlayCountdown {
     }
 
     /**
-     * 设置当前语言
+     * 设置当前语言（需在 ControlCenter.setLanguage 之后调用）
      *
      * @param language 语言代码，如 en_US, zh_HANS, zh_HANT
      */
     public static void setLanguage(String language) {
-        currentLanguage = language;
-
         // 如果当前有显示的悬浮窗，更新其文本
         if (currentStage != null && currentStage.isShowing()) {
-            try {
-                bundle = ResourceBundle.getBundle("MessagesBundle_" + language);
-
-                if (currentCountdownLabel != null && remainingSeconds == 0) {
-                    if (isPaused) {
-                        currentCountdownLabel.setText(bundle.getString("overlay.paused"));
-                    } else {
-                        currentCountdownLabel.setText(bundle.getString("overlay.typing"));
-                    }
+            ResourceBundle bundle = ControlCenter.bundle;
+            if (currentCountdownLabel != null && remainingSeconds == 0) {
+                if (isPaused) {
+                    currentCountdownLabel.setText(bundle.getString("overlay.paused"));
+                } else {
+                    currentCountdownLabel.setText(bundle.getString("overlay.typing"));
                 }
-            } catch (Exception e) {
-                e.printStackTrace();
             }
         }
     }
@@ -311,7 +305,7 @@ public class OverlayCountdown {
 
             // 如果倒计时已经结束（剩余秒数为0），更新显示文字为"已暂停"
             if (remainingSeconds == 0 && currentCountdownLabel != null) {
-                currentCountdownLabel.setText(bundle.getString("overlay.paused"));
+                currentCountdownLabel.setText(ControlCenter.bundle.getString("overlay.paused"));
             }
         });
     }
@@ -329,36 +323,8 @@ public class OverlayCountdown {
 
             // 如果倒计时已经结束（剩余秒数为0），恢复显示"正在键入"
             if (remainingSeconds == 0 && currentCountdownLabel != null) {
-                currentCountdownLabel.setText(bundle.getString("overlay.typing"));
+                currentCountdownLabel.setText(ControlCenter.bundle.getString("overlay.typing"));
             }
         });
-    }
-
-    /**
-     * 获取剩余秒数
-     */
-    public static double getRemainingSeconds() {
-        return remainingSeconds;
-    }
-
-    /**
-     * 检查倒计时是否正在运行
-     */
-    public static boolean isRunning() {
-        return currentTimeline != null && currentTimeline.getStatus() == Animation.Status.RUNNING;
-    }
-
-    /**
-     * 检查倒计时是否已暂停
-     */
-    public static boolean isPaused() {
-        return isPaused;
-    }
-
-    /**
-     * 检查倒计时是否已停止
-     */
-    public static boolean isStopped() {
-        return isStopped;
     }
 }

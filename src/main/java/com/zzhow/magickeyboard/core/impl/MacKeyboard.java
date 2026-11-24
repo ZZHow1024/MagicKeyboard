@@ -3,26 +3,21 @@ package com.zzhow.magickeyboard.core.impl;
 import com.sun.jna.Library;
 import com.sun.jna.Native;
 import com.sun.jna.Pointer;
+import com.zzhow.magickeyboard.core.ControlCenter;
 
 import java.util.HashMap;
 import java.util.Map;
 
-import com.zzhow.magickeyboard.core.ControlCenter;
-import com.zzhow.magickeyboard.core.IKeyboard;
-
 /**
  * 模拟键盘输入-macOS 实现类
+ * <p>
+ * 兼容模式：虚拟键码 + Shift 组合键；极速模式：CGEventKeyboardSetUnicodeString 事件。
  *
  * @author ZZHow
  * create 2025/10/13
- * update 2025/11/2
+ * update 2026/11/23
  */
-public class MacKeyboard implements IKeyboard {
-
-    private volatile boolean isStopped = false;
-    private volatile boolean isPaused = false;
-    private final Object pauseLock = new Object();
-
+public class MacKeyboard extends AbstractKeyboard {
 
     public interface CoreGraphics extends Library {
         CoreGraphics INSTANCE = Native.load("CoreGraphics", CoreGraphics.class);
@@ -40,6 +35,9 @@ public class MacKeyboard implements IKeyboard {
 
     private static final int kCGSessionEventTap = 1;
     private static final long kCGEventFlagMaskShift = 0x00020002;
+    private static final short kVK_Shift = 56;
+    private static final short kVK_Return = 36;
+    private static final short kVK_Tab = 48;
 
     // macOS 虚拟键码映射
     private static final Map<Character, Short> KEY_MAP = new HashMap<>();
@@ -194,61 +192,31 @@ public class MacKeyboard implements IKeyboard {
     }
 
     @Override
-    public void sendText(String text, ControlCenter.Mode mode) {
-        isStopped = false;
-        isPaused = false;
+    protected void sendNewLine() {
+        sendSpecialKey(kVK_Return);
+    }
 
-        for (int i = 0; i < text.length(); i++) {
-            if (isStopped) {
-                break;
-            }
+    @Override
+    protected void sendTab() {
+        sendSpecialKey(kVK_Tab);
+    }
 
-            while (isPaused) {
-                synchronized (pauseLock) {
-                    try {
-                        pauseLock.wait();
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                        return;
-                    }
-                }
-                if (isStopped) {
-                    break;
-                }
-            }
-
-            if (isStopped) {
-                break;
-            }
-
-            char c = text.charAt(i);
-
-            // 处理特殊按键（两种模式都需要）
-            if (c == '\n') {
-                sendSpecialKey((short) 36); // kVK_Return
-                continue;
-            } else if (c == '\t') {
-                sendSpecialKey((short) 48); // kVK_Tab
-                continue;
-            }
-
-            // 根据模式选择发送方式
-            if (mode == ControlCenter.Mode.RAPID_MODE) {
-                // 极速模式：所有字符都使用Unicode方式
-                sendCharUnicode(c);
-            } else {
-                // 兼容模式：使用原有的虚拟键码方式
-                sendChar(c);
-            }
-
-            try {
-                Thread.sleep(ControlCenter.timeInterval);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                break;
-            }
+    @Override
+    protected void sendCodePoint(int codePoint, ControlCenter.Mode mode) {
+        if (Character.isSupplementaryCodePoint(codePoint)) {
+            // 补充字符（如 Emoji）整个码点一次性发送，修复原先代理对被拆开无法输入的问题
+            sendUnicodeString(Character.toChars(codePoint));
+            return;
         }
-        isStopped = true;
+
+        char c = (char) codePoint;
+        if (mode == ControlCenter.Mode.RAPID_MODE) {
+            // 极速模式：所有字符都使用Unicode方式
+            sendCharUnicode(c);
+        } else {
+            // 兼容模式：使用虚拟键码方式
+            sendChar(c);
+        }
     }
 
     private void sendChar(char c) {
@@ -260,20 +228,16 @@ public class MacKeyboard implements IKeyboard {
             return;
         }
 
-        boolean needsShift = Character.isUpperCase(c) ||
-                (NEEDS_SHIFT.containsKey(c) && NEEDS_SHIFT.get(c));
+        boolean needsShift = Character.isUpperCase(c)
+                || Boolean.TRUE.equals(NEEDS_SHIFT.get(c));
 
         if (needsShift) {
             // 按下Shift
-            Pointer shiftDown = CoreGraphics.INSTANCE.CGEventCreateKeyboardEvent(null, (short) 56, true);
+            Pointer shiftDown = CoreGraphics.INSTANCE.CGEventCreateKeyboardEvent(null, kVK_Shift, true);
             CoreGraphics.INSTANCE.CGEventPost(kCGSessionEventTap, shiftDown);
             CoreGraphics.INSTANCE.CFRelease(shiftDown);
 
-            try {
-                Thread.sleep(ControlCenter.timeInterval); // 短暂延迟确保Shift被识别
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
+            sleepInterval(); // 短暂延迟确保Shift被识别
         }
 
         // 按下按键
@@ -293,14 +257,10 @@ public class MacKeyboard implements IKeyboard {
         CoreGraphics.INSTANCE.CFRelease(keyUp);
 
         if (needsShift) {
-            try {
-                Thread.sleep(ControlCenter.timeInterval); // 短暂延迟
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
+            sleepInterval(); // 短暂延迟
 
             // 释放Shift
-            Pointer shiftUp = CoreGraphics.INSTANCE.CGEventCreateKeyboardEvent(null, (short) 56, false);
+            Pointer shiftUp = CoreGraphics.INSTANCE.CGEventCreateKeyboardEvent(null, kVK_Shift, false);
             CoreGraphics.INSTANCE.CGEventPost(kCGSessionEventTap, shiftUp);
             CoreGraphics.INSTANCE.CFRelease(shiftUp);
         }
@@ -308,14 +268,17 @@ public class MacKeyboard implements IKeyboard {
 
     // Unicode方式（用于极速模式或没有映射的特殊字符）
     private void sendCharUnicode(char c) {
+        sendUnicodeString(new char[]{c});
+    }
+
+    private void sendUnicodeString(char[] chars) {
         Pointer keyDown = CoreGraphics.INSTANCE.CGEventCreateKeyboardEvent(null, (short) 0, true);
-        char[] chars = {c};
-        CoreGraphics.INSTANCE.CGEventKeyboardSetUnicodeString(keyDown, 1, chars);
+        CoreGraphics.INSTANCE.CGEventKeyboardSetUnicodeString(keyDown, chars.length, chars);
         CoreGraphics.INSTANCE.CGEventPost(kCGSessionEventTap, keyDown);
         CoreGraphics.INSTANCE.CFRelease(keyDown);
 
         Pointer keyUp = CoreGraphics.INSTANCE.CGEventCreateKeyboardEvent(null, (short) 0, false);
-        CoreGraphics.INSTANCE.CGEventKeyboardSetUnicodeString(keyUp, 1, chars);
+        CoreGraphics.INSTANCE.CGEventKeyboardSetUnicodeString(keyUp, chars.length, chars);
         CoreGraphics.INSTANCE.CGEventPost(kCGSessionEventTap, keyUp);
         CoreGraphics.INSTANCE.CFRelease(keyUp);
     }
@@ -328,38 +291,5 @@ public class MacKeyboard implements IKeyboard {
         Pointer keyUp = CoreGraphics.INSTANCE.CGEventCreateKeyboardEvent(null, virtualKey, false);
         CoreGraphics.INSTANCE.CGEventPost(kCGSessionEventTap, keyUp);
         CoreGraphics.INSTANCE.CFRelease(keyUp);
-    }
-
-    @Override
-    public void stop() {
-        isStopped = true;
-        isPaused = false;
-        synchronized (pauseLock) {
-            pauseLock.notifyAll();
-        }
-    }
-
-    @Override
-    public void pause() {
-        isPaused = true;
-    }
-
-    @Override
-    public void resume() {
-        isPaused = false;
-        synchronized (pauseLock) {
-            pauseLock.notifyAll();
-        }
-
-        while (!isStopped) {
-            synchronized (pauseLock) {
-                try {
-                    pauseLock.wait(300);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    break;
-                }
-            }
-        }
     }
 }
