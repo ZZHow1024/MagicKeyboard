@@ -2,13 +2,19 @@ package com.zzhow.magickeyboard.controller;
 
 import com.zzhow.magickeyboard.core.ControlCenter;
 import com.zzhow.magickeyboard.core.KeyboardInput;
-import com.zzhow.magickeyboard.factory.LongSpinnerValueFactory;
 import com.zzhow.magickeyboard.util.OverlayCountdown;
 import com.zzhow.magickeyboard.window.AboutWindow;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
-import javafx.scene.control.*;
+import javafx.scene.control.Button;
+import javafx.scene.control.CheckBox;
+import javafx.scene.control.ChoiceBox;
+import javafx.scene.control.Label;
+import javafx.scene.control.Spinner;
+import javafx.scene.control.SpinnerValueFactory;
+import javafx.scene.control.TextArea;
 import javafx.scene.paint.Color;
+import javafx.util.StringConverter;
 
 import java.util.Locale;
 import java.util.ResourceBundle;
@@ -18,9 +24,14 @@ import java.util.ResourceBundle;
  *
  * @author ZZHow
  * create 2025/10/13
- * update 2025/11/3
+ * update 2026/11/23
  */
 public class MainController {
+
+    private static final long INTERVAL_MAX = 1000L;
+    private static final long INTERVAL_MIN_COMPATIBLE = 10L;
+    private static final long INTERVAL_MIN_RAPID = 0L;
+
     @FXML
     private TextArea textArea;
     @FXML
@@ -30,7 +41,7 @@ public class MainController {
     @FXML
     private Button buttonAbout;
     @FXML
-    private Spinner<Long> spinner;
+    private Spinner<Integer> spinner;
     @FXML
     private Label labelTypeInterval;
     @FXML
@@ -38,58 +49,79 @@ public class MainController {
     @FXML
     private CheckBox checkboxIgnoreLeadingWhitespace;
     @FXML
-    private ChoiceBox<String> choiceBoxMode;
+    private ChoiceBox<ControlCenter.Mode> choiceBoxMode;
     @FXML
-    private ChoiceBox<String> choiceBoxPosition;
+    private ChoiceBox<OverlayCountdown.Corner> choiceBoxPosition;
     @FXML
     private ChoiceBox<String> choiceBoxLanguage;
 
     @FXML
     private void initialize() {
-        KeyboardInput.sendText("");
         ControlCenter.onPaused = () -> Platform.runLater(this::pause);
         ControlCenter.onResume = () -> Platform.runLater(this::resume);
         ControlCenter.onResetStatus = () -> Platform.runLater(this::resetStatus);
-        spinner.setValueFactory(new LongSpinnerValueFactory(10L, 1000L, 35L, 1L));
-        // 限制只能输入整数
+
+        // 键入模式：选项直接存储枚举值，界面文案由转换器根据当前语言生成
+        choiceBoxMode.setConverter(new StringConverter<>() {
+            @Override
+            public String toString(ControlCenter.Mode mode) {
+                return modeLabel(mode);
+            }
+
+            @Override
+            public ControlCenter.Mode fromString(String string) {
+                return null;
+            }
+        });
+        choiceBoxMode.getItems().setAll(ControlCenter.Mode.COMPATIBLE_MODE, ControlCenter.Mode.RAPID_MODE);
+        choiceBoxMode.setValue(ControlCenter.mode);
+
+        // 悬浮窗位置：选项直接存储枚举值
+        choiceBoxPosition.setConverter(new StringConverter<>() {
+            @Override
+            public String toString(OverlayCountdown.Corner corner) {
+                return cornerLabel(corner);
+            }
+
+            @Override
+            public OverlayCountdown.Corner fromString(String string) {
+                return null;
+            }
+        });
+        choiceBoxPosition.getItems().setAll(
+                OverlayCountdown.Corner.TOP_RIGHT,
+                OverlayCountdown.Corner.TOP_LEFT,
+                OverlayCountdown.Corner.BOTTOM_RIGHT,
+                OverlayCountdown.Corner.BOTTOM_LEFT
+        );
+        choiceBoxPosition.setValue(ControlCenter.floatingWindowPosition);
+
+        // 键入间隔：只能输入整数，并按当前模式的上下限收敛
+        applyIntervalBounds();
         spinner.getEditor().textProperty().addListener((obs, oldValue, newValue) -> {
             if (!newValue.matches("-?\\d*")) {
                 spinner.getEditor().setText(oldValue);
-            } else {
+                return;
+            }
+            if (newValue.isEmpty() || newValue.equals("-")) {
+                return;
+            }
                 try {
-                    if (!newValue.isEmpty() && !newValue.equals("-")) {
-                        long value = Long.parseLong(newValue);
-                        spinner.getValueFactory().setValue(value);
-                        ControlCenter.timeInterval = value;
+                    long value = Long.parseLong(newValue);
+                    long clamped = Math.max(intervalMin(), Math.min(INTERVAL_MAX, value));
+                    if (clamped != value) {
+                        spinner.getEditor().setText(String.valueOf(clamped));
                     }
+                    spinner.getValueFactory().setValue((int) clamped);
+                    ControlCenter.timeInterval = clamped;
                 } catch (NumberFormatException e) {
                     spinner.getEditor().setText(oldValue);
                 }
-            }
         });
 
+        // 语言：根据系统语言初始化
         choiceBoxLanguage.getItems().addAll("简体中文", "繁體中文", "English");
-        String language = Locale.getDefault().toLanguageTag();
-        if (language.contains("zh")) {
-            if (language.contains("CN") || language.contains("cn"))
-                language = "zh_HANS";
-            else if (language.contains("HANS") || language.contains("Hans"))
-                language = "zh_HANS";
-            else
-                language = "zh_HANT";
-        } else {
-            language = "en_US";
-        }
-
-        OverlayCountdown.setLanguage(language);
-
-        language = switch (language) {
-            case "zh_HANS" -> "简体中文";
-            case "zh_HANT" -> "繁體中文";
-            case "en_US" -> "English";
-            default -> "简体中文";
-        };
-        choiceBoxLanguage.setValue(language);
+        choiceBoxLanguage.setValue(displayNameOf(detectSystemLanguage()));
         switchLanguage();
     }
 
@@ -120,58 +152,28 @@ public class MainController {
             });
         } else {
             // 倒计时结束，开始键入
-            if (ControlCenter.isPaused) {
-                // 已暂停
-                ControlCenter.resumeOrPause();
-            } else {
-                // 未暂停
-                ControlCenter.resumeOrPause();
-            }
+            ControlCenter.resumeOrPause();
         }
     }
 
     @FXML
     private void switchMode() {
-        if (choiceBoxMode.getValue() == null) {
-            ControlCenter.mode = ControlCenter.Mode.COMPATIBLE_MODE;
-        } else {
-            ResourceBundle bundle = ControlCenter.bundle;
-            String compatibleMode = bundle.getString("main.compatibleMode");
-            String rapidMode = bundle.getString("main.rapidMode");
-
-            ControlCenter.mode = switch (choiceBoxMode.getValue()) {
-                case String s when s.equals(compatibleMode) -> ControlCenter.Mode.COMPATIBLE_MODE;
-                case String s when s.equals(rapidMode) -> ControlCenter.Mode.RAPID_MODE;
-                default -> ControlCenter.Mode.COMPATIBLE_MODE;
-            };
+        ControlCenter.Mode selected = choiceBoxMode.getValue();
+        if (selected == null) {
+            return;
         }
-
-        if (ControlCenter.mode == ControlCenter.Mode.COMPATIBLE_MODE) {
-            spinner.setValueFactory(new LongSpinnerValueFactory(10L, 1000L, 35L, 1L));
-        } else {
-            spinner.setValueFactory(new LongSpinnerValueFactory(0L, 1000L, 10L, 1L));
-        }
+        ControlCenter.mode = selected;
+        // 切换模式后键入间隔的上下限不同（极速模式允许 0ms），收敛当前值而不是重置为默认值
+        applyIntervalBounds();
     }
 
     @FXML
     private void switchPosition() {
-        if (choiceBoxPosition.getValue() == null) {
-            ControlCenter.floatingWindowPosition = OverlayCountdown.Corner.TOP_RIGHT;
-        } else {
-            ResourceBundle bundle = ControlCenter.bundle;
-            String topRight = bundle.getString("main.floatingWindowTopRight");
-            String topLeft = bundle.getString("main.floatingWindowTopLeft");
-            String bottomRight = bundle.getString("main.floatingWindowBottomRight");
-            String bottomLeft = bundle.getString("main.floatingWindowBottomLeft");
-
-            ControlCenter.floatingWindowPosition = switch (choiceBoxPosition.getValue()) {
-                case String s when s.equals(topRight) -> OverlayCountdown.Corner.TOP_RIGHT;
-                case String s when s.equals(topLeft) -> OverlayCountdown.Corner.TOP_LEFT;
-                case String s when s.equals(bottomRight) -> OverlayCountdown.Corner.BOTTOM_RIGHT;
-                case String s when s.equals(bottomLeft) -> OverlayCountdown.Corner.BOTTOM_LEFT;
-                default -> OverlayCountdown.Corner.TOP_RIGHT;
-            };
+        OverlayCountdown.Corner selected = choiceBoxPosition.getValue();
+        if (selected == null) {
+            return;
         }
+        ControlCenter.floatingWindowPosition = selected;
     }
 
     @FXML
@@ -186,17 +188,11 @@ public class MainController {
 
     @FXML
     private void switchLanguage() {
-        String selectorValue = choiceBoxLanguage.getValue();
-        selectorValue = switch (selectorValue) {
-            case "简体中文" -> "zh_HANS";
-            case "繁體中文" -> "zh_HANT";
-            case "English" -> "en_US";
-            default -> "zh_HANS";
-        };
+        String languageCode = languageCodeOf(choiceBoxLanguage.getValue());
 
-        OverlayCountdown.setLanguage(selectorValue);
-
-        ControlCenter.setLanguage(selectorValue);
+        // 先更新全局语言与 bundle，再刷新依赖文案的组件
+        ControlCenter.setLanguage(languageCode);
+        OverlayCountdown.setLanguage(languageCode);
         ResourceBundle bundle = ControlCenter.bundle;
 
         // 更新按钮文本
@@ -222,29 +218,14 @@ public class MainController {
         // 更新复选框文本
         this.checkboxIgnoreLeadingWhitespace.setText(bundle.getString("main.checkboxIgnoreLeadingWhitespace"));
 
-        // 更新选择框内容
-        ControlCenter.Mode mode = ControlCenter.mode;
-        choiceBoxMode.getItems().clear();
-        choiceBoxMode.getItems().addAll(bundle.getString("main.compatibleMode"), bundle.getString("main.rapidMode"));
-        choiceBoxMode.setValue(mode == ControlCenter.Mode.COMPATIBLE_MODE ?
-                bundle.getString("main.compatibleMode") : bundle.getString("main.rapidMode"));
+        // 刷新模式/位置选择框的显示文案（选项仍是枚举值，仅触发重新渲染）
+        ControlCenter.Mode mode = choiceBoxMode.getValue();
+        choiceBoxMode.setValue(null);
+        choiceBoxMode.setValue(mode == null ? ControlCenter.mode : mode);
 
-        choiceBoxPosition.getItems().clear();
-        choiceBoxPosition.getItems().addAll(
-                bundle.getString("main.floatingWindowTopRight"),
-                bundle.getString("main.floatingWindowTopLeft"),
-                bundle.getString("main.floatingWindowBottomRight"),
-                bundle.getString("main.floatingWindowBottomLeft")
-        );
-
-        // 根据当前位置设置选择框的值
-        String positionValue = switch (ControlCenter.floatingWindowPosition) {
-            case TOP_RIGHT -> bundle.getString("main.floatingWindowTopRight");
-            case TOP_LEFT -> bundle.getString("main.floatingWindowTopLeft");
-            case BOTTOM_RIGHT -> bundle.getString("main.floatingWindowBottomRight");
-            case BOTTOM_LEFT -> bundle.getString("main.floatingWindowBottomLeft");
-        };
-        choiceBoxPosition.setValue(positionValue);
+        OverlayCountdown.Corner corner = choiceBoxPosition.getValue();
+        choiceBoxPosition.setValue(null);
+        choiceBoxPosition.setValue(corner == null ? ControlCenter.floatingWindowPosition : corner);
     }
 
     // 重置状态
@@ -268,5 +249,72 @@ public class MainController {
     private void resume() {
         ResourceBundle bundle = ControlCenter.bundle;
         this.buttonStart.setText(bundle.getString("main.buttonPause"));
+    }
+
+    // 按当前键入模式设置间隔的上下限，并保留用户已设置的值
+    private void applyIntervalBounds() {
+        long clamped = Math.max(intervalMin(), Math.min(INTERVAL_MAX, ControlCenter.timeInterval));
+        spinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory((int) intervalMin(), (int) INTERVAL_MAX, (int) clamped, 1));
+        ControlCenter.timeInterval = clamped;
+    }
+
+    private long intervalMin() {
+        return ControlCenter.mode == ControlCenter.Mode.RAPID_MODE
+                ? INTERVAL_MIN_RAPID
+                : INTERVAL_MIN_COMPATIBLE;
+    }
+
+    private static String modeLabel(ControlCenter.Mode mode) {
+        ResourceBundle bundle = ControlCenter.bundle;
+        return mode == ControlCenter.Mode.RAPID_MODE
+                ? bundle.getString("main.rapidMode")
+                : bundle.getString("main.compatibleMode");
+    }
+
+    private static String cornerLabel(OverlayCountdown.Corner corner) {
+        ResourceBundle bundle = ControlCenter.bundle;
+        return switch (corner) {
+            case TOP_RIGHT -> bundle.getString("main.floatingWindowTopRight");
+            case TOP_LEFT -> bundle.getString("main.floatingWindowTopLeft");
+            case BOTTOM_RIGHT -> bundle.getString("main.floatingWindowBottomRight");
+            case BOTTOM_LEFT -> bundle.getString("main.floatingWindowBottomLeft");
+        };
+    }
+
+    /**
+     * 检测系统语言：zh 按文字系统（Hans/Hant）与地区判断简繁，其余默认英文
+     */
+    private static String detectSystemLanguage() {
+        Locale locale = Locale.getDefault();
+        if (!"zh".equals(locale.getLanguage())) {
+            return "en_US";
+        }
+        if ("Hant".equalsIgnoreCase(locale.getScript())) {
+            return "zh_HANT";
+        }
+        if ("Hans".equalsIgnoreCase(locale.getScript())) {
+            return "zh_HANS";
+        }
+        // 无文字系统标记时按地区判断
+        return switch (locale.getCountry()) {
+            case "TW", "HK", "MO" -> "zh_HANT";
+            default -> "zh_HANS";
+        };
+    }
+
+    private static String displayNameOf(String languageCode) {
+        return switch (languageCode) {
+            case "zh_HANT" -> "繁體中文";
+            case "en_US" -> "English";
+            default -> "简体中文";
+        };
+    }
+
+    private static String languageCodeOf(String displayName) {
+        return switch (displayName) {
+            case "繁體中文" -> "zh_HANT";
+            case "English" -> "en_US";
+            default -> "zh_HANS";
+        };
     }
 }

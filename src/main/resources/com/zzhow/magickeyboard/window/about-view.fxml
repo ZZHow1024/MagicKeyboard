@@ -12,7 +12,7 @@
     </padding>
     <AnchorPane prefHeight="287.0" prefWidth="471.0">
         <children>
-            <Label layoutX="151.0" layoutY="14.0" text="MagicKeyboard 2.0.0">
+            <Label fx:id="labelTitleEn" layoutX="151.0" layoutY="14.0" text="MagicKeyboard">
                 <font>
                     <Font size="28.0" />
                 </font>
