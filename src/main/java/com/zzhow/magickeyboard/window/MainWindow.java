@@ -1,6 +1,7 @@
 package com.zzhow.magickeyboard.window;
 
 import com.zzhow.magickeyboard.MagicKeyboardApplication;
+import com.zzhow.magickeyboard.core.KeyboardInput;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
@@ -15,7 +16,7 @@ import java.util.Objects;
  *
  * @author ZZHow
  * create 2025/10/12
- * update 2025/10/12
+ * update 2026/11/23
  */
 public class MainWindow extends Application {
     @Override
@@ -29,6 +30,12 @@ public class MainWindow extends Application {
         Image icon = new Image(Objects.requireNonNull(MagicKeyboardApplication.class.getResourceAsStream("/image/MagicKeyboard.png")));
         stage.getIcons().add(icon);
         stage.show();
+    }
+
+    @Override
+    public void stop() {
+        // 关闭主窗口/应用退出时停止模拟键入，避免退出后按键动作继续
+        KeyboardInput.stop();
     }
 
     public static void show() {
