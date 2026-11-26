@@ -201,13 +201,14 @@ public class LinuxKeyboard extends AbstractKeyboard {
         }
 
         if (layout != null) {
-            LinuxKeyLayout.KeyBinding binding = layout.find(codePointToKeysym(codePoint));
+            long keysym = codePointToKeysym(codePoint);
+            LinuxKeyLayout.KeyBinding binding = layout.find(keysym);
             if (binding != null) {
                 pressKey(binding.keycode(), binding.shift());
                 return;
             }
 
-            int keycode = resolveByServerOrBinding(codePointToKeysym(codePoint));
+            int keycode = resolveByServerOrBinding(keysym);
             if (keycode != 0) {
                 // 布局中不存在的字符（中文、Emoji 等）经动态键码绑定注入，无需 Shift
                 pressKey(keycode, false);
@@ -312,6 +313,9 @@ public class LinuxKeyboard extends AbstractKeyboard {
         // 以服务器端查找结果验证绑定是否生效
         long keycode = Xlib.INSTANCE.XKeysymToKeycode(display, keysym);
         if (keycode != target) {
+            // 绑定失败：立即恢复原 keysym 行（避免占用非空闲键码时破坏其原映射）
+            Xlib.INSTANCE.XChangeKeyboardMapping(display, target, per, originalRow, 1);
+            Xlib.INSTANCE.XSync(display, false);
             return 0;
         }
 
