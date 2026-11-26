@@ -117,7 +117,7 @@ https://github.com/ZZHow1024/MagicKeyboard/releases
 
 ### 系统要求
 
-- Windows 10+，macOS 10.15+，Linux(X11)
+- Windows 10+，macOS 10.15+，Linux(X11 / Wayland)
 
 ---
 
@@ -130,10 +130,10 @@ https://github.com/ZZHow1024/MagicKeyboard/releases
 
 ### 有限支持平台
 
-- **Linux(X11)**：
-    - 支持英文字符输入。
-    - 不支持中文等非英文字符。
-    - 仅支持 X11 显示服务器，Wayland 暂不支持。
+- **Linux(X11 / Wayland)**：
+    - 支持英文字符输入，自动适配系统键盘布局。
+    - 支持中文等非英文字符输入（通过动态键码绑定实现，实验性）。
+    - X11 显示服务器完整支持；Wayland 会话经由 XWayland 提供 X11 通道，未安装 XWayland 时无法键入，原生 Wayland 支持在规划中。
 
 ---
 

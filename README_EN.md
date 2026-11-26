@@ -117,7 +117,7 @@ https://github.com/ZZHow1024/MagicKeyboard/releases
 
 ### System Requirements
 
-- Windows 10+, macOS 10.15+, Linux(X11)
+- Windows 10+, macOS 10.15+, Linux(X11 / Wayland)
 
 ---
 
@@ -130,10 +130,10 @@ https://github.com/ZZHow1024/MagicKeyboard/releases
 
 ### Limitedly Supported Platforms
 
-- **Linux(X11)**:
-- Supports English character input.
-- Does not support non-English characters such as Chinese.
-- Only supports the X11 display server; Wayland is not currently supported.
+- **Linux(X11 / Wayland)**:
+    - Supports English character input and automatically adapts to the system keyboard layout.
+    - Supports non-English characters such as Chinese (via dynamic keycode binding, experimental).
+    - Fully supported on the X11 display server; Wayland sessions work through the XWayland X11 channel and require XWayland to be installed. Native Wayland support is on the roadmap.
 
 ---
 

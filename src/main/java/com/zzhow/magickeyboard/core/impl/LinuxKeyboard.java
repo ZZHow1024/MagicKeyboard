@@ -94,9 +94,16 @@ public class LinuxKeyboard extends AbstractKeyboard {
             return;
         }
 
+        boolean wayland = isWaylandSession();
+        if (wayland) {
+            LOGGER.info(waylandSessionHintMessage());
+        }
+
         Pointer display = Xlib.INSTANCE.XOpenDisplay(null);
         if (display == null) {
-            LOGGER.severe(x11DisplayUnavailableMessage());
+            LOGGER.severe(wayland
+                    ? x11DisplayUnavailableUnderWaylandMessage()
+                    : x11DisplayUnavailableMessage());
             return;
         }
         this.display = display;
@@ -128,6 +135,32 @@ public class LinuxKeyboard extends AbstractKeyboard {
             return ControlCenter.bundle.getString("error.x11DisplayUnavailable");
         } catch (Exception e) {
             return "Unable to open the X11 display.";
+        }
+    }
+
+    /**
+     * 检测 Wayland 会话（WAYLAND_DISPLAY 或 XDG_SESSION_TYPE）
+     */
+    static boolean isWaylandSession() {
+        if (System.getenv("WAYLAND_DISPLAY") != null) {
+            return true;
+        }
+        return "wayland".equalsIgnoreCase(System.getenv("XDG_SESSION_TYPE"));
+    }
+
+    private static String waylandSessionHintMessage() {
+        try {
+            return ControlCenter.bundle.getString("error.waylandSessionHint");
+        } catch (Exception e) {
+            return "Wayland session detected: input goes through XWayland in this version.";
+        }
+    }
+
+    private static String x11DisplayUnavailableUnderWaylandMessage() {
+        try {
+            return ControlCenter.bundle.getString("error.x11DisplayUnavailableWayland");
+        } catch (Exception e) {
+            return "Unable to open the X11 display. Under Wayland, make sure XWayland is installed and running.";
         }
     }
 
