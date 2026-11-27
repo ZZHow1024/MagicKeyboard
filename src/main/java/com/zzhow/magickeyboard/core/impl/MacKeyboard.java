@@ -35,9 +35,12 @@ public class MacKeyboard extends AbstractKeyboard {
 
     private static final int kCGSessionEventTap = 1;
     private static final long kCGEventFlagMaskShift = 0x00020002;
+    private static final long kCGEventFlagMaskControl = 0x00040000;
+    private static final long kCGEventFlagMaskAlternateKey = 0x00080000;
     private static final short kVK_Shift = 56;
     private static final short kVK_Return = 36;
     private static final short kVK_Tab = 48;
+    private static final short kVK_Escape = 53;
 
     // macOS 虚拟键码映射
     private static final Map<Character, Short> KEY_MAP = new HashMap<>();
@@ -199,6 +202,40 @@ public class MacKeyboard extends AbstractKeyboard {
     @Override
     protected void sendTab() {
         sendSpecialKey(kVK_Tab);
+    }
+
+    @Override
+    protected void sendEscapeKey() {
+        sendSpecialKey(kVK_Escape);
+    }
+
+    @Override
+    protected void sendComboKey(java.util.Set<KeyMarkers.Modifier> modifiers, char key) {
+        long flags = 0;
+        if (modifiers.contains(KeyMarkers.Modifier.CTRL)) {
+            flags |= kCGEventFlagMaskControl;
+        }
+        if (modifiers.contains(KeyMarkers.Modifier.ALT)) {
+            flags |= kCGEventFlagMaskAlternateKey;
+        }
+        if (modifiers.contains(KeyMarkers.Modifier.SHIFT)) {
+            flags |= kCGEventFlagMaskShift;
+        }
+
+        Short target = KEY_MAP.get(Character.toLowerCase(key));
+        if (target == null) {
+            return; // 解析器保证主键为 A-Z/0-9，理论上不可达
+        }
+
+        Pointer keyDown = CoreGraphics.INSTANCE.CGEventCreateKeyboardEvent(null, target, true);
+        CoreGraphics.INSTANCE.CGEventSetFlags(keyDown, flags);
+        CoreGraphics.INSTANCE.CGEventPost(kCGSessionEventTap, keyDown);
+        CoreGraphics.INSTANCE.CFRelease(keyDown);
+
+        Pointer keyUp = CoreGraphics.INSTANCE.CGEventCreateKeyboardEvent(null, target, false);
+        CoreGraphics.INSTANCE.CGEventSetFlags(keyUp, flags);
+        CoreGraphics.INSTANCE.CGEventPost(kCGSessionEventTap, keyUp);
+        CoreGraphics.INSTANCE.CFRelease(keyUp);
     }
 
     @Override

@@ -32,8 +32,11 @@ public class LinuxKeyboard extends AbstractKeyboard {
     private static final Logger LOGGER = Logger.getLogger(LinuxKeyboard.class.getName());
 
     private static final int KEYCODE_LEFT_SHIFT = 50; // Left Shift keycode
+    private static final int KEYCODE_LEFT_CTRL = 37;  // Left Ctrl keycode
+    private static final int KEYCODE_LEFT_ALT = 64;   // Left Alt keycode
     private static final int KEYCODE_ENTER = 36;      // Enter keycode
     private static final int KEYCODE_TAB = 23;        // Tab keycode
+    private static final int KEYCODE_ESCAPE = 9;      // Escape keycode
 
     // X11 接口定义
     public interface X11 extends Library {
@@ -172,6 +175,60 @@ public class LinuxKeyboard extends AbstractKeyboard {
     @Override
     protected void sendTab() {
         sendSpecialKeyWithDisplay(KEYCODE_TAB);
+    }
+
+    @Override
+    protected void sendEscapeKey() {
+        sendSpecialKeyWithDisplay(KEYCODE_ESCAPE);
+    }
+
+    @Override
+    protected void sendComboKey(java.util.Set<KeyMarkers.Modifier> modifiers, char key) {
+        int[] modifierKeycodes = modifierKeycodes(modifiers);
+        int target = comboTargetKeycode(key);
+        if (target == 0) {
+            return; // 布局中找不到主键
+        }
+
+        for (int keycode : modifierKeycodes) {
+            X11.INSTANCE.XTestFakeKeyEvent(display, keycode, true, 0);
+        }
+        X11.INSTANCE.XTestFakeKeyEvent(display, target, true, 0);
+        X11.INSTANCE.XTestFakeKeyEvent(display, target, false, 0);
+        for (int i = modifierKeycodes.length - 1; i >= 0; i--) {
+            X11.INSTANCE.XTestFakeKeyEvent(display, modifierKeycodes[i], false, 0);
+        }
+        Xlib.INSTANCE.XFlush(display);
+    }
+
+    private static int[] modifierKeycodes(java.util.Set<KeyMarkers.Modifier> modifiers) {
+        java.util.List<Integer> keycodes = new java.util.ArrayList<>();
+        if (modifiers.contains(KeyMarkers.Modifier.CTRL)) {
+            keycodes.add(KEYCODE_LEFT_CTRL);
+        }
+        if (modifiers.contains(KeyMarkers.Modifier.ALT)) {
+            keycodes.add(KEYCODE_LEFT_ALT);
+        }
+        if (modifiers.contains(KeyMarkers.Modifier.SHIFT)) {
+            keycodes.add(KEYCODE_LEFT_SHIFT);
+        }
+        return keycodes.stream().mapToInt(Integer::intValue).toArray();
+    }
+
+    /**
+     * 组合键主键的键码：优先按实际布局查找，回退服务器端 keysym 查询
+     */
+    private int comboTargetKeycode(char key) {
+        char c = Character.toLowerCase(key);
+        long keysym = codePointToKeysym(c);
+        if (layout != null) {
+            LinuxKeyLayout.KeyBinding binding = layout.find(keysym);
+            if (binding != null) {
+                return binding.keycode();
+            }
+        }
+        long keycode = Xlib.INSTANCE.XKeysymToKeycode(display, keysym);
+        return keycode != 0 ? (int) keycode : 0;
     }
 
     /**

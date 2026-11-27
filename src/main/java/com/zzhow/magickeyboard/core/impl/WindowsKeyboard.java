@@ -24,6 +24,9 @@ public class WindowsKeyboard extends AbstractKeyboard {
     // Windows 虚拟键码（WinUser 未定义的部分）
     private static final int VK_RETURN = 0x0D;
     private static final int VK_TAB = 0x09;
+    private static final int VK_ESCAPE = 0x1B;
+    private static final int VK_CONTROL = 0x11;
+    private static final int VK_MENU = 0x12;
     private static final int VK_SHIFT = WinUser.VK_SHIFT;
 
     private interface User32 extends Library {
@@ -130,6 +133,48 @@ public class WindowsKeyboard extends AbstractKeyboard {
     protected void sendTab() {
         sendVirtualKey(VK_TAB, false);
         sendVirtualKey(VK_TAB, true);
+    }
+
+    @Override
+    protected void sendEscapeKey() {
+        sendVirtualKey(VK_ESCAPE, false);
+        sendVirtualKey(VK_ESCAPE, true);
+    }
+
+    @Override
+    protected void sendComboKey(java.util.Set<KeyMarkers.Modifier> modifiers, char key) {
+        int[] modifierVks = modifierVirtualKeys(modifiers);
+        int target = targetVirtualKey(key);
+
+        for (int vk : modifierVks) {
+            sendVirtualKey(vk, false);
+        }
+        sendVirtualKey(target, false);
+        sendVirtualKey(target, true);
+        for (int i = modifierVks.length - 1; i >= 0; i--) {
+            sendVirtualKey(modifierVks[i], true);
+        }
+    }
+
+    private static int[] modifierVirtualKeys(java.util.Set<KeyMarkers.Modifier> modifiers) {
+        java.util.List<Integer> vks = new java.util.ArrayList<>();
+        if (modifiers.contains(KeyMarkers.Modifier.CTRL)) {
+            vks.add(VK_CONTROL);
+        }
+        if (modifiers.contains(KeyMarkers.Modifier.ALT)) {
+            vks.add(VK_MENU);
+        }
+        if (modifiers.contains(KeyMarkers.Modifier.SHIFT)) {
+            vks.add(VK_SHIFT);
+        }
+        return vks.stream().mapToInt(Integer::intValue).toArray();
+    }
+
+    private static int targetVirtualKey(char key) {
+        if (key >= 'A' && key <= 'Z') {
+            return 0x41 + (key - 'A');
+        }
+        return 0x30 + (key - '0'); // 0-9，解析器保证取值范围
     }
 
     @Override

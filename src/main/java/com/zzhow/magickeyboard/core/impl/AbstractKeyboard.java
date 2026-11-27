@@ -3,6 +3,8 @@ package com.zzhow.magickeyboard.core.impl;
 import com.zzhow.magickeyboard.core.ControlCenter;
 import com.zzhow.magickeyboard.core.IKeyboard;
 
+import java.util.List;
+
 /**
  * 模拟键盘输入抽象基类
  * <p>
@@ -38,11 +40,25 @@ public abstract class AbstractKeyboard implements IKeyboard {
      */
     protected abstract void sendTab();
 
+    /**
+     * 发送 Esc 键
+     */
+    protected abstract void sendEscapeKey();
+
+    /**
+     * 发送修饰键组合（如 Ctrl+S），主键由解析器保证为 A-Z 或 0-9
+     *
+     * @param modifiers 修饰键集合（至少一个）
+     * @param key       主键（A-Z 或 0-9）
+     */
+    protected abstract void sendComboKey(java.util.Set<KeyMarkers.Modifier> modifiers, char key);
+
     @Override
     public void sendText(String text, ControlCenter.Mode mode) {
         resetState();
         try {
-            for (int i = 0; i < text.length(); i++) {
+            List<Object> segments = KeyMarkers.parse(text);
+            for (Object segment : segments) {
                 // 检查是否停止
                 if (stopped) {
                     break;
@@ -54,29 +70,48 @@ public abstract class AbstractKeyboard implements IKeyboard {
                     break;
                 }
 
-                char c = text.charAt(i);
-
-                // 处理特殊按键（两种模式都需要）
-                if (c == '\n') {
-                    sendNewLine();
-                    sleepInterval();
-                    continue;
-                } else if (c == '\t') {
-                    sendTab();
-                    sleepInterval();
+                if (segment instanceof KeyMarkers.Marker marker) {
+                    executeMarker(marker);
                     continue;
                 }
 
-                // 处理代理对（Surrogate Pairs）：高、低位代理组成完整码点后一次发送
-                if (Character.isHighSurrogate(c) && i + 1 < text.length()
-                        && Character.isLowSurrogate(text.charAt(i + 1))) {
-                    sendCodePoint(Character.toCodePoint(c, text.charAt(i + 1)), mode);
-                    i++; // 跳过低位代理
-                } else {
-                    sendCodePoint(c, mode);
-                }
+                String literal = (String) segment;
+                for (int i = 0; i < literal.length(); i++) {
+                    // 检查是否停止
+                    if (stopped) {
+                        break;
+                    }
 
-                sleepInterval();
+                    // 检查是否暂停
+                    awaitIfPaused();
+                    if (stopped) {
+                        break;
+                    }
+
+                    char c = literal.charAt(i);
+
+                    // 处理特殊按键（两种模式都需要）
+                    if (c == '\n') {
+                        sendNewLine();
+                        sleepInterval();
+                        continue;
+                    } else if (c == '\t') {
+                        sendTab();
+                        sleepInterval();
+                        continue;
+                    }
+
+                    // 处理代理对（Surrogate Pairs）：高、低位代理组成完整码点后一次发送
+                    if (Character.isHighSurrogate(c) && i + 1 < literal.length()
+                            && Character.isLowSurrogate(literal.charAt(i + 1))) {
+                        sendCodePoint(Character.toCodePoint(c, literal.charAt(i + 1)), mode);
+                        i++; // 跳过低位代理
+                    } else {
+                        sendCodePoint(c, mode);
+                    }
+
+                    sleepInterval();
+                }
             }
         } finally {
             // 键入结束，唤醒等待键入完毕的线程（如 resume() 的调用方）
@@ -85,6 +120,23 @@ public abstract class AbstractKeyboard implements IKeyboard {
                 pauseLock.notifyAll();
             }
         }
+    }
+
+    /**
+     * 执行标记对应的按键动作
+     */
+    private void executeMarker(KeyMarkers.Marker marker) {
+        switch (marker) {
+            case KeyMarkers.EnterMarker e -> sendNewLine();
+            case KeyMarkers.TabMarker t -> sendTab();
+            case KeyMarkers.EscapeMarker e -> sendEscapeKey();
+            case KeyMarkers.DelayMarker d -> {
+                sleepMillis(d.millis());
+                return;
+            }
+            case KeyMarkers.ComboMarker c -> sendComboKey(c.modifiers(), c.key());
+        }
+        sleepInterval();
     }
 
     @Override
@@ -156,6 +208,24 @@ public abstract class AbstractKeyboard implements IKeyboard {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             stopped = true;
+        }
+    }
+
+    /**
+     * 按指定时长延迟（DELAY 标记），分段休眠以便及时响应停止请求
+     */
+    protected final void sleepMillis(long millis) {
+        long remaining = Math.min(Math.max(millis, 0L), KeyMarkers.MAX_DELAY_MS);
+        long slept = 0;
+        while (!stopped && slept < remaining) {
+            long step = Math.min(200L, remaining - slept);
+            try {
+                Thread.sleep(step);
+                slept += step;
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                stopped = true;
+            }
         }
     }
 }
