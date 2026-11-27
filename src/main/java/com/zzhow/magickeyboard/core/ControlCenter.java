@@ -24,6 +24,10 @@ public class ControlCenter {
     public static Runnable onResume;
     public static Runnable onResetStatus;
 
+    // 全局热键动作（由主窗口控制器设置，回调已在 JavaFX 线程上执行）
+    public static Runnable onHotkeyToggle;
+    public static Runnable onHotkeyStop;
+
     public static Mode mode = Mode.COMPATIBLE_MODE; // 键入模式
     public static boolean isIgnoreLeadingWhitespace = false; // 是否忽略每行行首的空字符
 

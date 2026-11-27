@@ -3,7 +3,10 @@ package com.zzhow.magickeyboard.window;
 import com.zzhow.magickeyboard.MagicKeyboardApplication;
 import com.zzhow.magickeyboard.config.PreferencesManager;
 import com.zzhow.magickeyboard.core.KeyboardInput;
+import com.zzhow.magickeyboard.core.hotkey.Hotkeys;
+import com.zzhow.magickeyboard.core.hotkey.IHotkeyManager;
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
 import javafx.geometry.Rectangle2D;
 import javafx.scene.Scene;
@@ -24,6 +27,7 @@ import java.util.Objects;
 public class MainWindow extends Application {
 
     private Stage stage;
+    private IHotkeyManager hotkeyManager;
 
     @Override
     public void start(Stage stage) throws IOException {
@@ -38,6 +42,22 @@ public class MainWindow extends Application {
         applyPersistedBounds(stage);
         stage.show();
         this.stage = stage;
+
+        // 注册全局热键（Ctrl+Alt+M 开始/暂停/继续，Ctrl+Alt+S 停止），回调切回 JavaFX 线程
+        hotkeyManager = Hotkeys.create();
+        Hotkeys.registerDefaults(hotkeyManager,
+                () -> Platform.runLater(() -> {
+                    Runnable action = com.zzhow.magickeyboard.core.ControlCenter.onHotkeyToggle;
+                    if (action != null) {
+                        action.run();
+                    }
+                }),
+                () -> Platform.runLater(() -> {
+                    Runnable action = com.zzhow.magickeyboard.core.ControlCenter.onHotkeyStop;
+                    if (action != null) {
+                        action.run();
+                    }
+                }));
     }
 
     /**
@@ -62,7 +82,11 @@ public class MainWindow extends Application {
 
     @Override
     public void stop() {
-        // 关闭主窗口/应用退出时保存窗口状态并停止模拟键入，避免退出后按键动作继续
+        // 关闭主窗口/应用退出时注销热键、保存窗口状态并停止模拟键入
+        if (hotkeyManager != null) {
+            hotkeyManager.shutdown();
+            hotkeyManager = null;
+        }
         if (stage != null) {
             PreferencesManager.saveWindowBounds(stage.getX(), stage.getY(), stage.getWidth(), stage.getHeight());
         }

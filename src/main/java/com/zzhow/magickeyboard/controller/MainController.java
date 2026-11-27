@@ -137,6 +137,20 @@ public class MainController {
                 ? detectSystemLanguage()
                 : savedLanguage));
         switchLanguage();
+
+        // 全局热键动作（注册由 MainWindow 负责，回调已在 JavaFX 线程上执行）
+        ControlCenter.onHotkeyToggle = this::onButtonStartClicked;
+        ControlCenter.onHotkeyStop = this::onHotkeyStopAction;
+    }
+
+    /**
+     * 全局热键「停止」：仅在倒计时或键入进行中生效
+     */
+    private void onHotkeyStopAction() {
+        if (ControlCenter.isCountdown || ControlCenter.isStartInput) {
+            ControlCenter.stop();
+            resetStatus();
+        }
     }
 
     @FXML
