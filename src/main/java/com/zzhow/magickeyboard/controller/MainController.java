@@ -2,6 +2,7 @@ package com.zzhow.magickeyboard.controller;
 
 import com.zzhow.magickeyboard.core.ControlCenter;
 import com.zzhow.magickeyboard.core.KeyboardInput;
+import com.zzhow.magickeyboard.config.PreferencesManager;
 import com.zzhow.magickeyboard.util.OverlayCountdown;
 import com.zzhow.magickeyboard.window.AboutWindow;
 import javafx.application.Platform;
@@ -57,6 +58,12 @@ public class MainController {
 
     @FXML
     private void initialize() {
+        // 恢复持久化配置
+        ControlCenter.mode = PreferencesManager.loadMode();
+        ControlCenter.timeInterval = PreferencesManager.loadInterval();
+        ControlCenter.floatingWindowPosition = PreferencesManager.loadPosition();
+        ControlCenter.isIgnoreLeadingWhitespace = PreferencesManager.loadIgnoreLeadingWhitespace();
+
         ControlCenter.onPaused = () -> Platform.runLater(this::pause);
         ControlCenter.onResume = () -> Platform.runLater(this::resume);
         ControlCenter.onResetStatus = () -> Platform.runLater(this::resetStatus);
@@ -106,22 +113,29 @@ public class MainController {
             if (newValue.isEmpty() || newValue.equals("-")) {
                 return;
             }
-                try {
-                    long value = Long.parseLong(newValue);
-                    long clamped = Math.max(intervalMin(), Math.min(INTERVAL_MAX, value));
-                    if (clamped != value) {
-                        spinner.getEditor().setText(String.valueOf(clamped));
-                    }
-                    spinner.getValueFactory().setValue((int) clamped);
-                    ControlCenter.timeInterval = clamped;
-                } catch (NumberFormatException e) {
-                    spinner.getEditor().setText(oldValue);
+            try {
+                long value = Long.parseLong(newValue);
+                long clamped = Math.max(intervalMin(), Math.min(INTERVAL_MAX, value));
+                if (clamped != value) {
+                    spinner.getEditor().setText(String.valueOf(clamped));
                 }
+                spinner.getValueFactory().setValue((int) clamped);
+                ControlCenter.timeInterval = clamped;
+                PreferencesManager.saveInterval(clamped);
+            } catch (NumberFormatException e) {
+                spinner.getEditor().setText(oldValue);
+            }
         });
 
-        // 语言：根据系统语言初始化
+        // 复选框显示状态与全局状态同步
+        checkboxIgnoreLeadingWhitespace.setSelected(ControlCenter.isIgnoreLeadingWhitespace);
+
+        // 语言：优先使用上次保存的选择，未保存过时按系统语言初始化
         choiceBoxLanguage.getItems().addAll("简体中文", "繁體中文", "English");
-        choiceBoxLanguage.setValue(displayNameOf(detectSystemLanguage()));
+        String savedLanguage = PreferencesManager.loadLanguage();
+        choiceBoxLanguage.setValue(displayNameOf(savedLanguage.isEmpty()
+                ? detectSystemLanguage()
+                : savedLanguage));
         switchLanguage();
     }
 
@@ -163,6 +177,7 @@ public class MainController {
             return;
         }
         ControlCenter.mode = selected;
+        PreferencesManager.saveMode(selected);
         // 切换模式后键入间隔的上下限不同（极速模式允许 0ms），收敛当前值而不是重置为默认值
         applyIntervalBounds();
     }
@@ -174,6 +189,7 @@ public class MainController {
             return;
         }
         ControlCenter.floatingWindowPosition = selected;
+        PreferencesManager.savePosition(selected);
     }
 
     @FXML
@@ -184,6 +200,7 @@ public class MainController {
     @FXML
     private void onCheckBoxClicked() {
         ControlCenter.isIgnoreLeadingWhitespace = checkboxIgnoreLeadingWhitespace.isSelected();
+        PreferencesManager.saveIgnoreLeadingWhitespace(ControlCenter.isIgnoreLeadingWhitespace);
     }
 
     @FXML
@@ -192,6 +209,7 @@ public class MainController {
 
         // 先更新全局语言与 bundle，再刷新依赖文案的组件
         ControlCenter.setLanguage(languageCode);
+        PreferencesManager.saveLanguage(languageCode);
         OverlayCountdown.setLanguage(languageCode);
         ResourceBundle bundle = ControlCenter.bundle;
 
